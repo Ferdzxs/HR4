@@ -42,8 +42,8 @@ A comprehensive Human Resources management system focused on compensation, payro
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/yourusername/HR4_COMPEN_INTELLI.git
-cd HR4_COMPEN_INTELLI
+git clone https://github.com/yourusername/HR4.git
+cd HR4
 ```
 
 ### 2. Database Setup
