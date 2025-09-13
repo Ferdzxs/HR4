@@ -1,6 +1,5 @@
 -- Sample data for HR4 Compensation & Intelligence System
 USE hr4_compensation_intelli;
-
 -- Insert roles
 INSERT INTO roles (role_name, permissions) VALUES
 ('HR Manager', '{"modules": ["employees", "organization", "payroll", "compensation", "benefits", "analytics", "delegations", "bulk", "settings"]}'),
@@ -93,7 +92,7 @@ INSERT INTO employee_details (employee_id, birth_date, gender, civil_status, con
 
 -- Insert users with hashed passwords
 INSERT INTO users (username, password_hash, role_id, employee_id) VALUES
-('hr.manager', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 1, 15), -- password: manager123
+('hr.manager', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 1, 15), -- password: hr123
 ('comp.manager', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 2, 18), -- password: comp123
 ('benefits.coord', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 3, 17), -- password: benefits123
 ('payroll.admin', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 4, 16), -- password: payroll123
@@ -435,3 +434,5 @@ INSERT INTO analytics_metrics (metric_type, metric_value, calculation_date, depa
 ('Active Claims', 8.00, '2024-12-01', NULL),
 ('Pending Claims', 1.00, '2024-12-01', NULL),
 ('Total Government Contributions', 15000.00, '2024-12-01', NULL);
+
+-- Sample data loaded successfully
