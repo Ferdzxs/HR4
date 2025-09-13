@@ -1,7 +1,9 @@
-// Simple SPA shell with ChatGPT-like UI, mock login, routing, and dark mode
+// Frontend JavaScript for HR4 SPA - Now works with PHP backend
+// This file is kept for reference but most functionality has been moved to frontend.js
 
 (function () {
-  const { ROLES, SIDEBAR_ITEMS, SESSION_TIMEOUT_HOURS } = window.HR4_RBAC;
+  // Note: RBAC configuration is now handled by PHP backend
+  // This file is maintained for any remaining frontend functionality
 
   const storage = {
     get(key, fallback = null) {
