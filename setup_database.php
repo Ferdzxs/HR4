@@ -1,9 +1,9 @@
 <?php
 /**
- * Reset Database Script
+ * Complete Database Setup Script
  * HR4 Compensation & Intelligence System
  * 
- * This script completely resets the database and creates fresh data
+ * This script creates tables and demo users in one go
  */
 
 require_once 'config/database.php';
@@ -12,26 +12,23 @@ try {
     $database = new Database();
     $db = $database->getConnection();
     
-    echo "Resetting HR4 Compensation & Intelligence System...\n";
+    echo "Setting up HR4 Compensation & Intelligence System...\n";
     echo "==================================================\n\n";
     
-    // Drop all tables in correct order (respecting foreign keys)
-    echo "Dropping existing tables...\n";
+    // Drop existing tables if they exist (for clean setup)
+    echo "Cleaning existing data...\n";
     $tables = ['sessions', 'audit_logs', 'users', 'employees', 'departments', 'roles'];
     foreach ($tables as $table) {
         try {
             $db->exec("DROP TABLE IF EXISTS $table");
-            echo "✓ Dropped table: $table\n";
         } catch (Exception $e) {
-            echo "⚠ Warning dropping $table: " . $e->getMessage() . "\n";
+            // Ignore errors if table doesn't exist
         }
     }
-    echo "\n";
-    
-    // Now run the setup
-    echo "Creating fresh database...\n";
+    echo "✓ Cleaned existing data\n\n";
     
     // Create roles table
+    echo "Creating roles table...\n";
     $db->exec("
         CREATE TABLE roles (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -43,6 +40,7 @@ try {
     echo "✓ Roles table created\n";
     
     // Create departments table
+    echo "Creating departments table...\n";
     $db->exec("
         CREATE TABLE departments (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -55,6 +53,7 @@ try {
     echo "✓ Departments table created\n";
     
     // Create employees table
+    echo "Creating employees table...\n";
     $db->exec("
         CREATE TABLE employees (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -75,6 +74,7 @@ try {
     echo "✓ Employees table created\n";
     
     // Create users table
+    echo "Creating users table...\n";
     $db->exec("
         CREATE TABLE users (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -92,6 +92,7 @@ try {
     echo "✓ Users table created\n";
     
     // Create sessions table
+    echo "Creating sessions table...\n";
     $db->exec("
         CREATE TABLE sessions (
             id VARCHAR(128) PRIMARY KEY,
@@ -105,6 +106,7 @@ try {
     echo "✓ Sessions table created\n";
     
     // Create audit_logs table
+    echo "Creating audit_logs table...\n";
     $db->exec("
         CREATE TABLE audit_logs (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -222,7 +224,7 @@ try {
     }
     echo "✓ Users created\n\n";
     
-    echo "🎉 Database reset completed successfully!\n\n";
+    echo "🎉 Setup completed successfully!\n\n";
     echo "Demo Credentials:\n";
     echo "================\n";
     echo "HR Manager: hr.manager / manager123\n";
@@ -235,7 +237,7 @@ try {
     echo "You can now access the system at: http://localhost/HR4_COMPEN&INTELLI/\n";
     
 } catch (Exception $e) {
-    echo "❌ Error resetting database: " . $e->getMessage() . "\n";
+    echo "❌ Error setting up database: " . $e->getMessage() . "\n";
     echo "Make sure your database is properly configured and accessible.\n";
 }
 ?>

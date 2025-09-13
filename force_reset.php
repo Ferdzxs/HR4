@@ -1,9 +1,9 @@
 <?php
 /**
- * Reset Database Script
+ * Force Reset Database Script
  * HR4 Compensation & Intelligence System
  * 
- * This script completely resets the database and creates fresh data
+ * This script completely resets the database by disabling foreign key checks
  */
 
 require_once 'config/database.php';
@@ -12,11 +12,16 @@ try {
     $database = new Database();
     $db = $database->getConnection();
     
-    echo "Resetting HR4 Compensation & Intelligence System...\n";
-    echo "==================================================\n\n";
+    echo "Force resetting HR4 Compensation & Intelligence System...\n";
+    echo "=======================================================\n\n";
     
-    // Drop all tables in correct order (respecting foreign keys)
-    echo "Dropping existing tables...\n";
+    // Disable foreign key checks
+    echo "Disabling foreign key checks...\n";
+    $db->exec("SET FOREIGN_KEY_CHECKS = 0");
+    echo "✓ Foreign key checks disabled\n\n";
+    
+    // Drop all tables
+    echo "Dropping all tables...\n";
     $tables = ['sessions', 'audit_logs', 'users', 'employees', 'departments', 'roles'];
     foreach ($tables as $table) {
         try {
@@ -26,9 +31,13 @@ try {
             echo "⚠ Warning dropping $table: " . $e->getMessage() . "\n";
         }
     }
-    echo "\n";
     
-    // Now run the setup
+    // Re-enable foreign key checks
+    echo "\nRe-enabling foreign key checks...\n";
+    $db->exec("SET FOREIGN_KEY_CHECKS = 1");
+    echo "✓ Foreign key checks enabled\n\n";
+    
+    // Now create fresh tables
     echo "Creating fresh database...\n";
     
     // Create roles table
@@ -222,7 +231,7 @@ try {
     }
     echo "✓ Users created\n\n";
     
-    echo "🎉 Database reset completed successfully!\n\n";
+    echo "🎉 Force reset completed successfully!\n\n";
     echo "Demo Credentials:\n";
     echo "================\n";
     echo "HR Manager: hr.manager / manager123\n";
@@ -235,7 +244,7 @@ try {
     echo "You can now access the system at: http://localhost/HR4_COMPEN&INTELLI/\n";
     
 } catch (Exception $e) {
-    echo "❌ Error resetting database: " . $e->getMessage() . "\n";
+    echo "❌ Error force resetting database: " . $e->getMessage() . "\n";
     echo "Make sure your database is properly configured and accessible.\n";
 }
 ?>
