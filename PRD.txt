@@ -1,0 +1,822 @@
+# HUMAN RESOURCE 4 - Compensation & HR Intelligence System PRD
+
+## Overview
+The HUMAN RESOURCE 4 - Compensation & HR Intelligence system is a comprehensive hospital management solution designed to streamline employee compensation, payroll processing, and HR analytics. This system addresses the critical need for accurate, compliant, and efficient management of hospital workforce compensation while providing actionable insights for strategic HR decision-making.
+
+The system serves hospital HR departments, payroll administrators, department heads, and hospital management by automating complex payroll calculations, ensuring regulatory compliance, and delivering real-time HR intelligence.
+
+## Core Features
+
+### Core Human Capital Management (HCM)
+- **Employee Profile Management**: Centralized employee records with comprehensive personal, professional, and emergency contact information
+- **Organizational Structure Management**: Hierarchical department and position management with role-based access controls
+- **Employee Lifecycle Tracking**: Complete journey from hire to retire with status change management
+- **Document Management**: Digital storage and retrieval of employee documents, contracts, and certifications
+- **Integration Hub**: Seamless data flow with other hospital systems and Security Administration
+- **Advanced Delegation System**:
+  - Temporary role assignments for leaves/absences
+  - Clear approval chain configuration
+  - Task delegation tracking with audit logs
+- **Bulk Operations Center**:
+  - Mass employee data updates
+  - Bulk document processing
+  - Change tracking and validation
+
+### Payroll Management
+- **Automated Payroll Processing**: Complex salary calculations including basic pay, overtime, shift differentials, and allowances
+- **Hospital-Specific Calculations**: Night shift premiums, holiday pay, on-call allowances, and hazard pay for medical staff
+- **Tax and Compliance Management**: Automated BIR tax calculations, government contributions (SSS, PhilHealth, Pag-IBIG)
+- **Digital Payslip System**: Self-service employee access to payslips with detailed breakdowns
+- **Loan and Deduction Management**: Automated loan tracking with scheduled deductions
+- **Bank Integration**: Direct salary transfer file generation for seamless payment processing
+- **Error Correction System**:
+  - Streamlined payroll reversal process
+  - Comprehensive adjustment tracking
+  - Complete audit trail for corrections
+- **Retroactive Processing**:
+  - Historical rate applications
+  - Automated difference computation
+  - Structured adjustment payment scheduling
+
+### Compensation Planning
+- **Salary Grade Management**: Structured pay scales with position-based compensation tables
+- **Merit Increase Processing**: Performance-based salary adjustment workflows with approval chains
+- **Pay Equity Analysis**: Tools for analyzing compensation fairness across departments and positions
+- **Budget Integration**: Real-time budget validation for salary adjustments and compensation planning
+- **Benchmarking Tools**: Industry comparison capabilities for competitive compensation strategies
+
+### HR Analytics Dashboard
+- **Real-Time Workforce Metrics**: Live headcount, turnover, and retention analytics
+- **Payroll Cost Analytics**: Department-wise labor cost tracking and budget monitoring
+- **Performance Intelligence**: Compensation KPIs linked to performance metrics
+- **Predictive Analytics**: Workforce planning insights and trend analysis
+- **Executive Reporting**: High-level dashboards for hospital management decision-making
+- **Enhanced Real-time Analytics**:
+  - Live data synchronization engine
+  - Automated performance metrics tracking
+  - Real-time report generation
+- **Advanced Export System**:
+  - Multi-format export capabilities
+  - Scheduled export automation
+  - Custom report template builder
+
+### HMO & Benefits Administration
+- **Comprehensive Health Insurance Management**: Multi-provider HMO plan administration with flexible coverage options
+- **Employee Self-Service Enrollment**: Intuitive enrollment portal for employees to manage their benefits
+- **Dependent Management System**: Complete dependent registration, verification, and coverage management
+- **Claims Processing Workflow**: Digital claims submission, approval, and reimbursement tracking
+- **Provider Network Management**: Hospital and clinic network management with coverage mapping
+- **Benefits Cost Analysis**: Detailed cost tracking and allocation by department and employee
+- **Annual Enrollment Period Management**: Automated enrollment windows with reminder systems
+- **Government Mandated Benefits**: Automated SSS, PhilHealth, and Pag-IBIG administration
+- **Benefits Reporting and Analytics**: Comprehensive reporting on benefits utilization and costs
+- **Integration with Payroll**: Automatic deduction processing and cost allocation to financial systems
+- **Enhanced Provider Management**:
+  - Unified provider dashboard
+  - Cross-provider coverage comparison
+  - Centralized claims tracking
+- **Advanced Verification System**:
+  - Automated document validation
+  - Intelligent dependent verification
+  - Automated renewal tracking
+
+## User Experience
+
+### User Personas
+
+#### HR Manager
+- **Primary Goals**: Efficient employee management, compliance oversight, strategic HR planning, analytics oversight
+- **Key Workflows**: Employee record maintenance, compensation policy oversight, analytics dashboard maintenance, policy management
+- **System Access**: Full access to all HR4 modules, analytics dashboard maintenance, policy management
+
+#### Compensation Manager
+- **Primary Goals**: Competitive compensation strategy, pay equity, salary planning, market analysis
+- **Key Workflows**: Salary structure management, merit increase processing, pay equity analysis, market benchmarking
+- **System Access**: Full access to compensation planning module, salary analytics, market data integration
+
+#### Benefits Coordinator
+- **Primary Goals**: Efficient benefits administration, employee satisfaction, cost control, claims management
+- **Key Workflows**: HMO plan management, enrollment processing, claims coordination, benefits cost analysis
+- **System Access**: Full access to benefits administration module, claims processing, enrollment management
+
+#### Payroll Administrator
+- **Primary Goals**: Accurate payroll processing, timely payments, regulatory compliance, tax management
+- **Key Workflows**: Payroll calculations, tax processing, government reporting, payslip generation
+- **System Access**: Full access to payroll module, tax calculations, government compliance reporting
+
+#### Department Head
+- **Primary Goals**: Team management, budget control, performance oversight, operational efficiency
+- **Key Workflows**: Team analytics review, budget monitoring, performance recommendations, approval workflows
+- **System Access**: Department-specific analytics, team member data, approval workflows, budget visibility
+
+#### Hospital Employee
+- **Primary Goals**: Easy access to personal information, self-service capabilities, benefit management
+- **Key Workflows**: Payslip viewing, benefit enrollment, personal information updates, claims submission
+- **System Access**: Personal information, payslips, benefits enrollment, claims submission
+
+#### Hospital Management
+- **Primary Goals**: Strategic workforce planning, cost control, compliance oversight, executive decision-making
+- **Key Workflows**: Executive reporting, budget analysis, strategic decision-making, workforce analytics
+- **System Access**: Executive dashboards, strategic analytics, cost analysis, workforce intelligence
+
+### Key User Flows
+
+#### Payroll Processing Flow
+1. Time and attendance data import from HR3 system
+2. Automated calculation of all salary components
+3. Tax and deduction processing
+4. Manager approval workflow
+5. Payslip generation and distribution
+6. Bank file creation for salary transfers
+7. Financial system integration for cost allocation
+
+#### Employee Self-Service Flow
+1. Secure login with role-based access
+2. View current payslip and historical records
+3. Update personal information and emergency contacts
+4. Enroll in benefits and manage dependents
+5. Submit leave requests and view balances
+6. Access HR policies and forms
+
+#### Benefits Enrollment Flow
+1. Employee receives enrollment notification
+2. Access benefits portal with available plans
+3. Compare plan options and coverage details
+4. Select desired benefits and add dependents
+5. Submit enrollment with required documentation
+6. HR approval and plan activation
+7. Confirmation and welcome package delivery
+
+### UI/UX Considerations
+- **Responsive Design**: Mobile-friendly interface for on-the-go access
+- **Role-Based Dashboards**: Customized views based on user responsibilities
+- **Intuitive Navigation**: Clear menu structure with breadcrumb navigation
+- **Real-Time Updates**: Live data refresh without page reloads
+- **Accessibility Compliance**: WCAG 2.1 AA standards for inclusive design
+- **Multi-language Support**: English and Filipino language options
+- **Print-Friendly Formats**: Optimized layouts for document printing
+
+### Role-Based Sidebar Navigation
+The collapsible sidebar provides role-specific navigation items. Each item links to relevant modules or functions, with elaborated content descriptions.
+
+#### HR Manager Sidebar
+- **Dashboard**: Comprehensive overview showing key metrics like headcount, payroll status, compliance alerts, and quick links to all modules.
+- **Employees**: Employee profile management interface for creating, updating, and viewing records, including lifecycle tracking and document management.
+- **Organization**: Tools for managing departments, positions, hierarchies, and role-based access controls.
+- **Payroll**: Full payroll processing tools, including calculations, tax management, payslip generation, and error corrections.
+- **Compensation**: Salary grade setup, merit increase workflows, pay equity analysis, and benchmarking tools.
+- **Benefits**: HMO plan administration, enrollment management, claims processing, and provider network tools.
+- **Analytics**: Real-time dashboards for workforce metrics, predictive analytics, and custom report generation.
+- **Delegations**: Interface for assigning temporary roles, configuring approval chains, and tracking delegations.
+- **Bulk Operations**: Tools for mass updates, document processing, and change validation.
+- **Settings**: System configuration, user management, policy creation, and audit trail access.
+
+#### Compensation Manager Sidebar
+- **Dashboard**: Compensation-focused overview with salary planning metrics, equity alerts, and budget summaries.
+- **Employees**: Read-only view of employee records and payroll data for compensation reference.
+- **Compensation**: Core tools for salary structures, merit increases, pay equity analysis, and market benchmarking.
+- **Analytics**: Compensation-specific reports and KPIs linked to performance metrics.
+- **Settings**: Limited access to compensation policy recommendations (no approval or config).
+
+#### Benefits Coordinator Sidebar
+- **Dashboard**: Benefits overview with enrollment status, claims queue, and cost analytics.
+- **Employees**: Read-only employee records for benefits reference.
+- **Benefits**: Full administration of HMO plans, enrollments, dependents, claims workflows, and provider management.
+- **Analytics**: Benefits utilization reports, cost tracking, and government benefits compliance.
+- **Settings**: Provider network configuration and renewal tracking.
+
+#### Payroll Administrator Sidebar
+- **Dashboard**: Payroll status overview with processing queues, error alerts, and compliance summaries.
+- **Employees**: Read-only employee and compensation data for payroll reference.
+- **Payroll**: Tools for automated processing, calculations, deductions, payslips, bank integrations, and retroactive adjustments.
+- **Analytics**: Payroll cost reports and tax compliance analytics.
+- **Settings**: Tax and compliance configuration (no salary structure changes).
+
+#### Department Head Sidebar
+- **Dashboard**: Department analytics with team headcount, budget monitoring, and performance summaries.
+- **Team Members**: View team employee info, payroll summaries, and approval workflows for requests.
+- **Analytics**: Department-specific metrics on costs, retention, and equity.
+- **Approvals**: Interface for reviewing and approving team-related requests like leaves or benefits.
+
+#### Hospital Employee Sidebar
+- **Dashboard**: Personal overview with latest payslip, benefits status, and leave balances.
+- **My Profile**: Update personal info, emergency contacts, and download documents.
+- **Payslips**: View current and historical payslips with breakdowns.
+- **Benefits**: Enrollment portal, dependent management, claims submission, and status tracking.
+- **Policies**: Access to HR policies, forms, and tax documents.
+
+#### Hospital Management Sidebar
+- **Dashboard**: Executive metrics on workforce, costs, compliance, and strategic insights.
+- **Analytics**: High-level dashboards for headcount, turnover, budget analysis, and predictive trends.
+- **Reports**: Access to executive reports and compliance summaries.
+
+## Login and Access Control System
+
+### Authentication and Login Requirements
+
+#### HR Manager Login
+- **Login Credentials**: HR Manager username/password
+- **Access Level**: Full system access to all HR4 modules
+- **Dashboard View**: Comprehensive HR overview with all functions
+- **Permissions**: Create, read, update, delete employee records; access all payroll functions; manage compensation policies; oversee benefits administration; maintain analytics dashboards; system configuration and user management; full audit trail access; policy creation and modification
+
+#### Compensation Manager Login
+- **Login Credentials**: Compensation Manager username/password
+- **Access Level**: Full access to compensation module, limited access to other modules
+- **Dashboard View**: Compensation-focused dashboard with salary planning tools
+- **Permissions**: Full access to compensation planning module; read access to employee records and payroll data; access to compensation analytics and reports; limited access to benefits and payroll processing; no access to system configuration; can recommend salary changes but cannot approve them; access to market benchmarking data
+
+#### Benefits Coordinator Login
+- **Login Credentials**: Benefits Coordinator username/password
+- **Access Level**: Full access to benefits module, limited access to other modules
+- **Dashboard View**: Benefits-focused dashboard with enrollment and claims tools
+- **Permissions**: Full access to HMO and benefits administration; read access to employee records; access to benefits analytics and reports; limited access to payroll and compensation data; no access to system configuration; can process claims and manage enrollments; access to provider network information
+
+#### Payroll Administrator Login
+- **Login Credentials**: Payroll Administrator username/password
+- **Access Level**: Full access to payroll module, limited access to other modules
+- **Dashboard View**: Payroll-focused dashboard with processing and reporting tools
+- **Permissions**: Full access to payroll processing and calculations; read access to employee records and compensation data; access to payroll analytics and reports; limited access to benefits administration; no access to system configuration; can process payroll but cannot modify salary structures; access to tax and compliance reporting
+
+#### Department Head Login
+- **Login Credentials**: Department Head username/password
+- **Access Level**: Limited access to department-specific data and functions
+- **Dashboard View**: Department-focused dashboard with team analytics
+- **Permissions**: View team member information and payroll data; access department-specific analytics and reports; approve team-related requests (leave, benefits, etc.); submit recommendations for team compensation; no access to other departments' data; no access to system configuration; can view team cost analysis and budget information; limited access to employee personal information
+
+#### Hospital Employee Login
+- **Login Credentials**: Employee username/password (or employee number)
+- **Access Level**: Self-service access to personal information only
+- **Dashboard View**: Personal dashboard with payslips, benefits, and personal info
+- **Permissions**: View personal payslips and payroll history; access personal benefits information and enrollment; update personal information and emergency contacts; submit benefit claims and view status; no access to other employees' data; no access to system administration; can download personal documents and reports; access to personal tax documents (2316, etc.)
+
+#### Hospital Management Login
+- **Login Credentials**: Executive username/password
+- **Access Level**: Executive-level analytics and reporting access
+- **Dashboard View**: Executive dashboard with strategic HR metrics
+- **Permissions**: Access executive-level analytics and reports; view workforce intelligence and cost analysis; access strategic planning tools and dashboards; no access to individual employee records; no access to operational HR functions; no access to system configuration; can view high-level compliance reports; access to budget and cost analysis tools
+
+### Multi-Factor Authentication (MFA) Requirements
+
+#### High-Security Roles (MFA Required)
+- **HR Manager**: Required for all logins
+- **Compensation Manager**: Required for all logins
+- **Benefits Coordinator**: Required for all logins
+- **Payroll Administrator**: Required for all logins
+
+#### Standard Security Roles (MFA Optional)
+- **Department Head**: Recommended but not required
+- **Hospital Management**: Recommended but not required
+
+#### Basic Security Roles (No MFA)
+- **Hospital Employee**: Not required
+
+### Session Management and Security
+
+#### Session Timeout Settings
+- **HR Staff (Managers/Coordinators)**: 4 hours
+- **Department Heads**: 8 hours
+- **Hospital Management**: 12 hours
+- **Hospital Employees**: 24 hours
+
+#### Concurrent Login Restrictions
+- **HR Staff**: Maximum 2 concurrent sessions
+- **Other Users**: Maximum 1 concurrent session
+
+#### Password Policies
+
+##### Complexity Requirements
+- **HR Staff**: 12+ characters, special characters, numbers, mixed case
+- **Other Users**: 8+ characters, mixed case and numbers
+
+##### Password Expiry
+- **HR Staff**: 90 days
+- **Other Users**: 180 days
+
+##### Password History
+- **HR Staff**: Cannot reuse last 5 passwords
+- **Other Users**: Cannot reuse last 3 passwords
+
+### Role-Based Access Control (RBAC)
+
+#### Access Control Matrix
+
+| Module | HR Manager | Compensation Manager | Benefits Coordinator | Payroll Administrator | Department Head | Hospital Employee | Hospital Management |
+|--------|------------|---------------------|---------------------|----------------------|-----------------|-------------------|---------------------|
+| **HCM** | Full Access | Read Only | Read Only | Read Only | Team Only | Personal Only | Summary Only |
+| **Payroll** | Full Access | Read Only | Read Only | Full Access | Team Summary | Personal Only | Analytics Only |
+| **Compensation** | Full Access | Full Access | Read Only | Read Only | Team Summary | Personal Only | Analytics Only |
+| **Benefits** | Full Access | Read Only | Full Access | Read Only | Team Summary | Personal Only | Analytics Only |
+| **Analytics** | Full Access | Module Specific | Module Specific | Module Specific | Department Only | None | Executive Only |
+| **System Config** | Full Access | None | None | None | None | None | None |
+
+#### Data Access Levels
+
+##### Full Access
+- Create, read, update, delete operations
+- Full audit trail visibility
+- Configuration management
+- User management
+
+##### Read Only
+- View data and reports
+- No modification capabilities
+- Limited audit trail access
+
+##### Team Only
+- Access limited to own department
+- No cross-department visibility
+- Team-specific analytics
+
+##### Personal Only
+- Access limited to own records
+- No other employee data
+- Self-service functions only
+
+##### Summary Only
+- Aggregated data only
+- No individual records
+- High-level metrics
+
+##### Analytics Only
+- Dashboard and report access
+- No operational functions
+- Strategic insights only
+
+### Security and Compliance Features
+
+#### Data Encryption
+- **In Transit**: TLS 1.3 encryption for all communications
+- **At Rest**: AES-256 encryption for sensitive data
+- **Database**: Column-level encryption for PII and financial data
+
+#### Audit Logging
+- **User Actions**: Complete logging of all user activities
+- **Data Changes**: Track all modifications to employee and payroll data
+- **Access Logs**: Record all login attempts and session activities
+- **Compliance Reports**: Automated generation of audit reports
+
+#### Access Monitoring
+- **Real-time Alerts**: Notify administrators of suspicious activities
+- **Failed Login Tracking**: Monitor and report failed authentication attempts
+- **Session Monitoring**: Track active sessions and unusual patterns
+- **Data Export Monitoring**: Log all data export and download activities
+
+#### Compliance Features
+- **GDPR Compliance**: Data privacy and right to be forgotten
+- **HIPAA Compliance**: Healthcare data protection standards
+- **SOX Compliance**: Financial data integrity and controls
+- **Local Regulations**: Philippine data privacy and labor law compliance
+
+## Technical Architecture
+
+### System Components
+
+#### Backend Architecture
+- **PHP 8.1+**: Core server-side logic with simple modular architecture
+- **No Framework**: Plain PHP application structure with organized includes and functions
+- **MySQL 8.0**: Primary database for employee and payroll data
+- **Session Management**: PHP native session handling for user authentication
+
+#### Frontend Architecture
+- **Vanilla JavaScript (ES6+)**: Simple and efficient JavaScript for UI interactions
+- **Tailwind CSS**: Utility-first CSS framework for responsive design
+- **Simple Routing**: Basic PHP routing through index.php
+- **AJAX Communication**: Standard AJAX for asynchronous server communication
+
+#### Database Design
+- **User Authentication Schema**: User accounts, roles, permissions, and security
+- **Employee Management Schema**: Core employee data, positions, departments
+- **Payroll Schema**: Salary components, deductions, tax calculations
+- **Compensation Schema**: Salary grades, merit increases, pay scales
+- **Benefits Schema**: HMO plans, enrollments, claims processing, provider networks
+- **Analytics Schema**: Metrics, reports, dashboard data
+- **Audit Schema**: Complete transaction logging and change tracking
+
+#### Integration Architecture
+- **Data Import Systems**: Employee data import and synchronization
+- **Performance Systems**: Performance data for merit increase processing
+- **Time & Attendance Systems**: Time and attendance data for payroll calculations
+- **Financial System Integration**: Cost allocation and budget validation
+- **Security System Integration**: User authentication and access control
+- **Banking Integration**: Salary transfer file generation
+- **HMO Provider Integration**: Claims processing and coverage verification
+
+## Development Roadmap
+
+### Standalone File Structure Setup
+An example of the structure used for reference (do not copy, use as a basis):
+
+HR4/
+│
+├── index.php               # Dashboard
+├── employees.php           # Employee management
+├── compensation.php        # Compensation management
+├── payroll.php             # Payroll
+├── benefits.php            # Benefits
+├── attendance.php          # Attendance
+├── intelligence.php        # HR Intelligence
+├── settings.php            # System settings
+│
+├── css/
+│   ├── index.css
+│   ├── employees.css
+│   ├── compensation.css
+│   ├── payroll.css
+│   ├── benefits.css
+│   ├── attendance.css
+│   ├── intelligence.css
+│   ├── settings.css
+│
+├── js/
+│   ├── index.js
+│   ├── employees.js
+│   ├── compensation.js
+│   ├── payroll.js
+│   ├── benefits.js
+│   ├── attendance.js
+│   ├── intelligence.js
+│   ├── settings.js
+│
+└── assets/
+    ├── img/
+    ├── fonts/
+    └── docs/
+
+### Development Phasing
+1. **File Setup**: Establish project directory structure, including PHP, CSS, JS, and asset folders as per the reference structure.
+2. **Frontend Development**: Fully develop the frontend (using Vanilla JavaScript and Tailwind CSS, no other frameworks) for each user/role, ensuring role-specific interfaces are complete before backend integration.
+3. **Backend and Database Integration**: Create MySQL schemas and implement PHP backend logic for each role, integrating with the frontend, followed by thorough testing per role.
+4. **Deployment**: Deploy the fully integrated and tested system to production.
+
+### Phase 2: UI/UX Development
+#### Role-Specific Interface Development
+---
+##### HR Manager Interface Details
+###### Dashboard Layout
+- Overview statistics cards (headcount, payroll, compliance)
+- Activity timeline for recent system actions
+- Alert notifications for critical tasks
+- Quick action buttons for common functions
+###### Employee Management
+- **Employee Directory**: Searchable grid with department/status filters, bulk action tools, export options
+- **Employee Profile**: Tabs for personal info, employment history, document repository, activity log
+- **Onboarding/Offboarding**: Process checklists, document templates, task assignments, progress tracking
+###### Department Control
+- **Department Overview**: Organizational chart, department metrics, staff distribution, budget allocation
+- **Position Management**: Job descriptions, salary grades, vacancy tracking, succession planning
+###### Payroll Overview
+- **Payroll Dashboard**: Processing calendar, approval status, exception reports, audit trails
+- **Compensation Review**: Salary adjustments, bonus management, benefits overview, cost analysis
+###### Benefits Administration
+- **Benefits Dashboard**: Enrollment status, claims overview, provider statistics, cost tracking
+- **Plan Management**: Plan configurations, coverage details, premium settings, eligibility rules
+###### Document Center
+- **Document Library**: Category folders, version control, access logs, search functionality
+- **Template Management**: Form templates, policy documents, contract templates, approval workflows
+###### System Settings
+- **User Management**: Role assignments, permission settings, access control, audit logs
+- **System Configuration**: Global settings, integration setup, workflow rules, notification settings
+###### Analytics Hub
+- **HR Analytics**: Workforce metrics, performance data, cost analysis, trend reports
+- **Custom Reports**: Report builder, scheduled reports, export options, data visualization
+###### Sidebar Items
+- Dashboard
+- Employee Management
+- Department Control
+- Payroll Overview
+- Benefits Administration
+- Document Center
+- System Settings
+- Analytics Hub
+- Delegations
+- Bulk Operations
+---
+##### Compensation Manager Interface Details
+###### Dashboard Layout
+- Salary distribution charts
+- Budget utilization metrics
+- Pending approvals widget
+- Market rate comparisons
+###### Compensation Planning
+- **Planning Dashboard**: Budget overview, planning calendar, department allocations, approval status
+- **Increase Planning**: Merit matrix, budget simulation, impact analysis, approval workflow
+###### Salary Structures
+- **Grade Management**: Salary bands, position mapping, market alignment, history tracking
+- **Structure Analysis**: Range penetration, compa-ratio analysis, cost modeling, equity assessment
+###### Merit Increases
+- **Review Cycle**: Performance ratings, increase guidelines, manager input, budget tracking
+- **Processing**: Batch processing, validation checks, approval routing, communication tools
+###### Pay Equity Analysis
+- **Equity Dashboard**: Gender pay gap, role comparisons, department analysis, trend tracking
+- **Analysis Tools**: Statistical analysis, root cause identification, recommendation engine, action planning
+###### Budget Management
+- **Budget Overview**: Allocation status, utilization tracking, forecast modeling, variance analysis
+- **Budget Control**: Department budgets, approval thresholds, exception handling, reallocation tools
+###### Reports Center
+- **Standard Reports**: Compensation summary, budget reports, equity analysis, audit trails
+- **Custom Reports**: Report builder, export options, scheduling, distribution lists
+###### Market Analysis
+- **Market Data**: Industry benchmarks, peer comparison, trend analysis, geographic factors
+- **Analysis Tools**: Competitive assessment, market positioning, cost of labor, recommendation engine
+###### Sidebar Items
+- Dashboard
+- Compensation Planning
+- Salary Structures
+- Merit Increases
+- Pay Equity Analysis
+- Budget Management
+- Reports Center
+- Market Analysis
+---
+##### Benefits Coordinator Interface Details
+###### Dashboard Layout
+- Claims processing status
+- Provider network map
+- Enrollment statistics
+- Benefits utilization
+###### HMO Management
+- **Plan Administration**: Plan setup, coverage details, premium management, policy updates
+- **Provider Management**: Network directory, contract management, service levels, performance tracking
+###### Claims Processing
+- **Claims Dashboard**: Claims queue, processing status, approval workflow, exception handling
+- **Claims Review**: Document verification, eligibility check, payment processing, communication tools
+###### Provider Network
+- **Network Management**: Provider directory, facility mapping, coverage zones, capacity tracking
+- **Performance Monitoring**: Service metrics, quality ratings, cost analysis, utilization reports
+###### Enrollment Center
+- **Enrollment Management**: Open enrollment, new enrollments, changes/updates, verification tools
+- **Dependent Management**: Eligibility verification, document validation, coverage updates, status tracking
+###### Benefits Analytics
+- **Utilization Analysis**: Usage patterns, cost trends, provider metrics, member behavior
+- **Financial Analysis**: Premium analysis, claims ratio, cost projections, savings opportunities
+###### Document Library
+- **Document Management**: Policy documents, forms repository, template library, version control
+- **Document Processing**: Batch upload, OCR processing, classification, access control
+###### Member Services
+- **Service Dashboard**: Inquiry tracking, response times, resolution rates, satisfaction metrics
+- **Support Tools**: Case management, knowledge base, communication templates, follow-up system
+###### Sidebar Items
+- Dashboard
+- HMO Management
+- Claims Processing
+- Provider Network
+- Enrollment Center
+- Benefits Analytics
+- Document Library
+- Member Services
+---
+##### Payroll Administrator Interface Details
+###### Dashboard Layout
+- Payroll calendar with upcoming cycles
+- Processing status tracker with alerts
+- Tax update notifications panel
+- Deduction summary charts
+- Quick links for urgent tasks
+###### Payroll Processing
+- **Processing Dashboard**: Batch processing tools, processing timeline, exception handling, validation logs
+- **Approval Workflow**: Multi-level approval setup, role-based routing, audit trail of changes, notification alerts
+###### Tax Management
+- **Tax Dashboard**: Latest regulatory updates, withholding summary, tax return deadlines, filing compliance alerts
+- **Tax Configuration**: Regional tax rules, contribution settings, employer obligations, update history
+###### Deductions Control
+- **Deduction Overview**: Benefit deductions, loan repayments, voluntary contributions, garnishments
+- **Deduction Settings**: Policy templates, eligibility rules, calculation formulas, adjustment tools
+###### Bank Files
+- **Disbursement Management**: File generation for banks, secure file transfer options, reconciliation tools, error handling
+- **Bank Setup**: Multi-bank support, format configurations, approval controls, log tracking
+###### Payslip Generation
+- **Payslip Dashboard**: Recent payslips issued, pending distribution, format previews, error reports
+- **Distribution Tools**: Email distribution, employee portal upload, print-ready formats, digital signature support
+###### Reports & Analytics
+- **Standard Payroll Reports**: Payroll summary, tax reports, deduction breakdown, variance analysis
+- **Custom Reports**: Report builder, scheduling and automation, export formats, role-based distribution
+###### Compliance Center
+- **Compliance Dashboard**: Legal obligations, filing deadlines, audit reminders, risk flags
+- **Policy Management**: Rule updates, document repository, approval workflows, regulatory history
+###### Sidebar Items
+- Dashboard
+- Payroll Processing
+- Tax Management
+- Deductions Control
+- Bank Files
+- Payslip Generation
+- Reports & Analytics
+- Compliance Center
+---
+##### Department Head Interface Details
+###### Dashboard Layout
+- Team overview cards
+- Budget status meter
+- Leave calendar widget
+- Performance metric graphs
+- Quick approval actions
+###### Team Management
+- **Team Directory**: Employee list with filters, status indicators, bulk communication tools, export options
+- **Role Assignments**: Position tracking, responsibility charts, access privileges, history log
+###### Budget Tracking
+- **Budget Dashboard**: Current allocation, utilization status, variance alerts, trend graph
+- **Budget Controls**: Department-level allocations, adjustment requests, approval thresholds, forecast projections
+###### Leave Management
+- **Leave Dashboard**: Pending requests, calendar integration, absence tracking, policy reminders
+- **Approval Tools**: Multi-level approvals, delegation options, notification system, audit records
+###### Performance Review
+- **Review Dashboard**: Cycle status, rating distributions, pending manager inputs, goal alignment charts
+- **Review Tools**: Evaluation templates, feedback forms, calibration tools, review archive
+###### Department Reports
+- **Standard Reports**: Attendance reports, overtime reports, performance summaries, budget usage reports
+- **Custom Reports**: Configurable metrics, scheduled delivery, data visualization, comparative analysis
+###### Document Access
+- **Document Library**: Policy documents, department-specific files, version tracking, access logs
+- **Collaboration Tools**: Shared folders, permission settings, approval workflows, search functions
+###### Sidebar Items
+- Dashboard
+- Team Management
+- Budget Tracking
+- Leave Management
+- Performance Review
+- Department Reports
+- Document Access
+---
+##### Hospital Employee Interface Details
+###### Dashboard Layout
+- Personal information card
+- Recent payslips list
+- Benefits status widget
+- Leave balance display
+- Quick request buttons
+###### My Profile
+- **Profile Dashboard**: Contact information, employment details, account settings, profile picture update
+- **Security Settings**: Password management, 2FA setup, access history, recovery options
+###### Payslips
+- **Payslip Dashboard**: Latest payslips, download options, breakdown view, archive access
+- **Notification Settings**: Email alerts, SMS reminders, mobile app sync, custom preferences
+###### Benefits Center
+- **Benefits Overview**: Active plans, enrollment status, contribution summary, claim history
+- **Claim Tools**: Claim submission, document upload, processing tracker, support chat
+###### Leave Request
+- **Request Dashboard**: Available leave balance, request form, status tracker, policy reference
+- **Approval Notifications**: Email confirmation, real-time updates, history archive, escalation path
+###### Documents
+- **Document Library**: Employment contracts, policy manuals, training materials, payslip PDFs
+- **Search & Access**: Search filters, download/print options, version history, access logs
+###### Help Center
+- **Support Dashboard**: FAQ library, ticket submission, chatbot support, contact HR option
+- **Knowledge Base**: Guides, tutorials, policy documents, video resources
+###### Sidebar Items
+- Dashboard
+- My Profile
+- Payslips
+- Benefits Center
+- Leave Request
+- Documents
+- Help Center
+---
+##### Hospital Management Interface Details
+###### Dashboard Layout
+- Executive summary cards
+- Cost analytics graphs
+- Workforce metrics dashboard
+- Strategic indicator widgets
+- Quick strategy actions
+###### Executive Dashboard
+- **Overview Cards**: Key financials, staffing levels, productivity indicators, compliance alerts
+- **Interactive Widgets**: Drill-down charts, forecast models, scenario simulations, benchmark comparisons
+###### Strategic Planning
+- **Planning Dashboard**: Long-term objectives, milestone tracker, resource allocation, progress indicators
+- **Planning Tools**: Scenario planning, risk assessment, collaboration tools, approval routing
+###### Cost Analysis
+- **Cost Dashboard**: Department costs, payroll costs, benefit expenditures, variance tracking
+- **Analysis Tools**: Forecast modeling, ROI calculators, budget vs. actual, drill-down reporting
+###### Workforce Analytics
+- **Analytics Dashboard**: Turnover rates, productivity metrics, attendance trends, demographic analysis
+- **Advanced Tools**: Predictive analytics, attrition modeling, skill gap analysis, resource optimization
+###### Compliance Overview
+- **Compliance Dashboard**: Regulatory updates, risk flags, audit tracking, certification status
+- **Governance Tools**: Policy repository, approval chains, compliance checklists, document tracking
+###### Executive Reports
+- **Standard Reports**: Financial summaries, workforce reports, strategic outcomes, compliance status
+- **Custom Reports**: Configurable KPIs, automated scheduling, distribution lists, visualization dashboards
+###### Sidebar Items
+- Dashboard
+- Executive Dashboard
+- Strategic Planning
+- Cost Analysis
+- Workforce Analytics
+- Compliance Overview
+- Executive Reports
+
+#### Common UI Components
+- **Navigation Elements**
+  - Responsive top navigation bar
+  - Collapsible sidebar
+  - Breadcrumb trails
+  - Quick action buttons
+- **Data Display Components**
+  - Dynamic data tables
+  - Interactive charts
+  - Status cards
+  - Progress indicators
+  - Alert notifications
+- **Form Components**
+  - Smart input fields
+  - Multi-step forms
+  - Validation feedback
+  - File upload zones
+  - Search interfaces
+- **Interactive Features**
+  - Real-time updates
+  - Drag-and-drop interfaces
+  - Modal dialogs
+  - Context menus
+  - Tool tips
+
+#### Responsive Design Implementation
+- Mobile-first approach
+- Tablet optimization
+- Desktop layouts
+- Print-friendly views
+
+#### Accessibility Features
+- WCAG 2.1 AA compliance
+- Screen reader support
+- Keyboard navigation
+- Color contrast options
+- Font size controls
+
+#### Multi-language Support
+- English interface
+- Filipino interface
+- Language switcher
+- Regional format handling
+
+#### Theme System
+- Light/Dark mode toggle
+- Custom color schemes
+- Brand customization
+- Role-based theming
+
+## Core Modules
+#### HCM Module
+- Employee profile management
+- Organization structure
+- Document management
+- Employee lifecycle tracking
+
+#### Payroll Module
+- Salary calculations
+- Tax management
+- Payslip generation
+- Bank integration
+
+#### Benefits Module
+- HMO management
+- Claims processing
+- Provider network
+- Benefits enrollment
+
+## Analytics and Integration
+#### Analytics
+- Real-time dashboards
+- Report generation
+- Data visualization
+- Export capabilities
+
+#### System Integration
+- Third-party APIs
+- Data import/export
+- Banking systems
+- Government portals
+
+## Success Metrics
+
+### Technical Metrics
+- **System Performance**: Page load times < 3 seconds
+- **Database Performance**: Query response times < 500ms
+- **System Availability**: 99.5% uptime during business hours
+- **Security**: Zero security breaches or data leaks
+
+### Business Metrics
+- **Payroll Processing Time**: 50% reduction in processing time
+- **Payroll Accuracy**: 99.9% accuracy rate
+- **User Adoption**: 90% of employees using self-service features
+- **Compliance**: 100% compliance with government regulations
+
+### User Experience Metrics
+- **User Satisfaction**: 4.5+ rating on user satisfaction surveys
+- **Training Time**: 50% reduction in user training time
+- **Support Tickets**: 40% reduction in HR support requests
+- **Data Quality**: 95% data accuracy rate
+
+## Conclusion
+The HUMAN RESOURCE 4 - Compensation & HR Intelligence system represents a comprehensive solution for modern hospital workforce management. By implementing this system, hospitals can achieve:
+
+1. **Operational Efficiency**: Automated payroll processing and benefits administration
+2. **Compliance Assurance**: Built-in regulatory compliance and audit trails
+3. **Strategic Insights**: Real-time analytics and workforce intelligence
+4. **Employee Satisfaction**: Self-service capabilities and transparent processes
+5. **Cost Control**: Better budget management and cost allocation
+
+The phased implementation approach ensures that critical functions are delivered early while building a solid foundation for advanced features. The system's modular architecture allows for future enhancements and integrations with other hospital systems.
+
+This PRD provides a complete roadmap for developing a world-class HR4 system that meets the unique needs of healthcare organizations while maintaining the highest standards of security, compliance, and user experience.
