@@ -168,6 +168,57 @@ class Auth {
         return false;
     }
 
+    public function validateRememberToken($remember_token) {
+        // Check if remember token exists and is valid
+        $query = "SELECT u.id, u.username, r.role_name, e.id as employee_id, 
+                         e.first_name, e.last_name, e.employee_number
+                  FROM user_sessions s
+                  JOIN " . $this->table_name . " u ON s.user_id = u.id
+                  LEFT JOIN roles r ON u.role_id = r.id
+                  LEFT JOIN employees e ON u.employee_id = e.id
+                  WHERE s.session_token = ? 
+                  AND s.expires_at > NOW()";
+
+        if ($this->is_pdo) {
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(1, $remember_token);
+            $stmt->execute();
+
+            if($stmt->rowCount() > 0) {
+                $row = $stmt->fetch(PDO::FETCH_ASSOC);
+                return [
+                    'id' => $row['id'],
+                    'username' => $row['username'],
+                    'role' => $row['role_name'],
+                    'employee_id' => $row['employee_id'],
+                    'first_name' => $row['first_name'],
+                    'last_name' => $row['last_name'],
+                    'employee_number' => $row['employee_number']
+                ];
+            }
+        } else {
+            $stmt = $this->conn->prepare($query);
+            $stmt->bind_param("s", $remember_token);
+            $stmt->execute();
+            $result = $stmt->get_result();
+
+            if($result->num_rows > 0) {
+                $row = $result->fetch_assoc();
+                return [
+                    'id' => $row['id'],
+                    'username' => $row['username'],
+                    'role' => $row['role_name'],
+                    'employee_id' => $row['employee_id'],
+                    'first_name' => $row['first_name'],
+                    'last_name' => $row['last_name'],
+                    'employee_number' => $row['employee_number']
+                ];
+            }
+        }
+        
+        return false;
+    }
+
     public function destroySession($session_token) {
         $query = "DELETE FROM user_sessions WHERE session_token = ?";
         
@@ -180,6 +231,81 @@ class Auth {
             $stmt->bind_param("s", $session_token);
             return $stmt->execute();
         }
+    }
+
+    public function isAccountLocked($username) {
+        $query = "SELECT COUNT(*) as attempts FROM login_attempts 
+                  WHERE username = ? AND attempt_time > DATE_SUB(NOW(), INTERVAL 15 MINUTE)";
+        
+        if ($this->is_pdo) {
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(1, $username);
+            $stmt->execute();
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            return $result['attempts'] >= 5;
+        } else {
+            $stmt = $this->conn->prepare($query);
+            $stmt->bind_param("s", $username);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $row = $result->fetch_assoc();
+            return $row['attempts'] >= 5;
+        }
+    }
+
+    public function recordFailedAttempt($username, $ip_address) {
+        $query = "INSERT INTO login_attempts (username, ip_address, attempt_time) VALUES (?, ?, NOW())";
+        
+        if ($this->is_pdo) {
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(1, $username);
+            $stmt->bindParam(2, $ip_address);
+            return $stmt->execute();
+        } else {
+            $stmt = $this->conn->prepare($query);
+            $stmt->bind_param("ss", $username, $ip_address);
+            return $stmt->execute();
+        }
+    }
+
+    public function clearFailedAttempts($username) {
+        $query = "DELETE FROM login_attempts WHERE username = ?";
+        
+        if ($this->is_pdo) {
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(1, $username);
+            return $stmt->execute();
+        } else {
+            $stmt = $this->conn->prepare($query);
+            $stmt->bind_param("s", $username);
+            return $stmt->execute();
+        }
+    }
+
+    public function validatePasswordStrength($password) {
+        $errors = [];
+        
+        if (strlen($password) < 8) {
+            $errors[] = "Password must be at least 8 characters long";
+        }
+        
+        if (!preg_match('/[A-Z]/', $password)) {
+            $errors[] = "Password must contain at least one uppercase letter";
+        }
+        
+        if (!preg_match('/[a-z]/', $password)) {
+            $errors[] = "Password must contain at least one lowercase letter";
+        }
+        
+        if (!preg_match('/[0-9]/', $password)) {
+            $errors[] = "Password must contain at least one number";
+        }
+        
+        if (!preg_match('/[^A-Za-z0-9]/', $password)) {
+            $errors[] = "Password must contain at least one special character";
+        }
+        
+        return $errors;
     }
 }
 ?>

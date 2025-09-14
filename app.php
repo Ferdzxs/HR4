@@ -6,8 +6,42 @@ include_once 'config/auth.php';
 
 // Check if user is logged in
 if (!isset($_SESSION['user'])) {
-    header('Location: login.php');
-    exit;
+    // Check for remember me token
+    $remember_token = $_COOKIE['hr4_remember_token'] ?? '';
+    if ($remember_token) {
+        $auth = new Auth();
+        $user = $auth->validateRememberToken($remember_token);
+        
+        if ($user) {
+            // Create new session
+            $session_token = bin2hex(random_bytes(32));
+            $expires_at = date('Y-m-d H:i:s', strtotime('+24 hours'));
+            $ip_address = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+            
+            // Store session in database
+            $auth->createSession($user['id'], $session_token, $expires_at, $ip_address);
+            
+            // Store user data in session
+            $_SESSION['user'] = [
+                'id' => $user['id'],
+                'username' => $user['username'],
+                'role' => $user['role'],
+                'employee_id' => $user['employee_id'],
+                'first_name' => $user['first_name'],
+                'last_name' => $user['last_name'],
+                'employee_number' => $user['employee_number'],
+                'session_token' => $session_token
+            ];
+        } else {
+            // Invalid remember token, clear cookie and redirect
+            setcookie('hr4_remember_token', '', time() - 3600, '/', '', true, true);
+            header('Location: login.php');
+            exit;
+        }
+    } else {
+        header('Location: login.php');
+        exit;
+    }
 }
 
 // Validate session with database
