@@ -134,7 +134,16 @@ class Auth {
             $stmt->execute();
 
             if($stmt->rowCount() > 0) {
-                return $stmt->fetch(PDO::FETCH_ASSOC);
+                $row = $stmt->fetch(PDO::FETCH_ASSOC);
+                return [
+                    'id' => $row['id'],
+                    'username' => $row['username'],
+                    'role' => $row['role_name'],
+                    'employee_id' => $row['employee_id'],
+                    'first_name' => $row['first_name'],
+                    'last_name' => $row['last_name'],
+                    'employee_number' => $row['employee_number']
+                ];
             }
         } else {
             $stmt = $this->conn->prepare($query);
@@ -143,7 +152,16 @@ class Auth {
             $result = $stmt->get_result();
 
             if($result->num_rows > 0) {
-                return $result->fetch_assoc();
+                $row = $result->fetch_assoc();
+                return [
+                    'id' => $row['id'],
+                    'username' => $row['username'],
+                    'role' => $row['role_name'],
+                    'employee_id' => $row['employee_id'],
+                    'first_name' => $row['first_name'],
+                    'last_name' => $row['last_name'],
+                    'employee_number' => $row['employee_number']
+                ];
             }
         }
         

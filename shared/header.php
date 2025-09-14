@@ -1,15 +1,7 @@
 <?php
 // Shared header component
 function renderHeader($user = null, $sidebarCollapsed = false) {
-    $themeToggleIcon = '
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 hidden dark:block" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M21 12a9 9 0 11-9-9 7 7 0 009 9z"/>
-        </svg>
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 dark:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="4"/>
-            <path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M4.93 19.07l1.41-1.41m11.32-11.32l1.41-1.41"/>
-        </svg>
-    ';
+    $themeToggleIcon = '';
     
     $collapseIcon = $sidebarCollapsed 
         ? '<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M15 19l-7-7 7-7"/></svg>'

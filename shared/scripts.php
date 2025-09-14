@@ -2,10 +2,12 @@
 // Shared JavaScript functionality extracted from app.js
 
 // Helper function to get sidebar state from localStorage (client-side)
-function getSidebarState() {
-    return isset($_COOKIE['hr4_sidebar_collapsed']) ? 
-           filter_var($_COOKIE['hr4_sidebar_collapsed'], FILTER_VALIDATE_BOOLEAN) : 
-           false;
+if (!function_exists('getSidebarState')) {
+    function getSidebarState() {
+        return isset($_COOKIE['hr4_sidebar_collapsed']) ? 
+               filter_var($_COOKIE['hr4_sidebar_collapsed'], FILTER_VALIDATE_BOOLEAN) : 
+               false;
+    }
 }
 ?>
 <script>
@@ -36,6 +38,30 @@ function applyTheme() {
   const theme = storage.get("hr4.theme", "system");
   const isDark = theme === "dark" || (theme === "system" && prefersDark);
   root.classList.toggle("dark", !!isDark);
+  
+  // Update theme toggle icon
+  updateThemeIcon(isDark);
+}
+
+// Update theme toggle icon based on current theme
+function updateThemeIcon(isDark) {
+  const themeToggle = document.getElementById('themeToggle');
+  if (!themeToggle) return;
+  
+  const sunIcon = `
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-yellow-500" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 2.25a.75.75 0 01.75.75v2.25a.75.75 0 01-1.5 0V3a.75.75 0 01.75-.75zM7.5 12a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM18.894 6.166a.75.75 0 00-1.06-1.06l-1.591 1.59a.75.75 0 101.06 1.061l1.591-1.59zM21.75 12a.75.75 0 01-.75.75h-2.25a.75.75 0 010-1.5H21a.75.75 0 01.75.75zM17.834 18.894a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 10-1.061 1.06l1.59 1.591zM12 18a.75.75 0 01.75.75V21a.75.75 0 01-1.5 0v-2.25A.75.75 0 0112 18zM7.758 17.303a.75.75 0 00-1.061-1.06l-1.591 1.59a.75.75 0 001.06 1.061l1.591-1.59zM6 12a.75.75 0 01-.75.75H3a.75.75 0 010-1.5h2.25A.75.75 0 016 12zM6.697 7.757a.75.75 0 001.06-1.06l-1.59-1.591a.75.75 0 00-1.061 1.06l1.59 1.591z"/>
+    </svg>
+  `;
+  
+  const moonIcon = `
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-300" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M21 12a9 9 0 11-9-9 7 7 0 009 9z"/>
+    </svg>
+  `;
+  
+  // Show sun icon when in light mode, moon icon when in dark mode
+  themeToggle.innerHTML = `<span class="sr-only">Theme</span>${isDark ? moonIcon : sunIcon}`;
 }
 
 function setTheme(next) {

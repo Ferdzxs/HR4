@@ -23,6 +23,7 @@ if (!$validated_user) {
     exit;
 }
 
+
 // Update session with fresh user data
 $user = [
     'id' => $validated_user['id'] ?? 0,
@@ -118,7 +119,7 @@ $rolePages = [
 // Get available pages for current user's role
 $availablePages = $rolePages[$user['role']] ?? [];
 
-// Debug: Log role information (remove this in production)
+// Log role information for debugging (remove in production)
 if (empty($availablePages)) {
     error_log("HR4 Debug: User role '{$user['role']}' not found in rolePages. Available roles: " . implode(', ', array_keys($rolePages)));
 }
