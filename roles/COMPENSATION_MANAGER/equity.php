@@ -10,8 +10,6 @@ include_once __DIR__ . '/../../rbac.php';
 
 $activeId = 'equity';
 
-
-
 $sidebarItems = $SIDEBAR_ITEMS[$user['role']] ?? [];
 
 
@@ -30,8 +28,9 @@ $sidebarItems = $SIDEBAR_ITEMS[$user['role']] ?? [];
     <div id="app" class="h-screen">
         <div class="h-full flex flex-col">
             <?php echo renderHeader($user, $sidebarCollapsed); ?>
-            <?php echo renderSidebar($sidebarItems, $activeId, $sidebarCollapsed); ?>
-            <main class="flex-1 overflow-y-auto">
+            <div class="flex-1 grid <?php echo $sidebarCollapsed ? 'lg:grid-cols-[72px_1fr]' : 'lg:grid-cols-[260px_1fr]'; ?>">
+                <?php echo renderSidebar($sidebarItems, $activeId, $sidebarCollapsed); ?>
+                <main class="overflow-y-auto">
                 
                 <section class="p-4 lg:p-6 space-y-4">
                 <div>
@@ -44,7 +43,8 @@ $sidebarItems = $SIDEBAR_ITEMS[$user['role']] ?? [];
                 </div>
                 </section>
 
-            </main>
+                </main>
+            </div>
         </div>
     </div>
     <?php include __DIR__ . '/../../shared/scripts.php'; ?>

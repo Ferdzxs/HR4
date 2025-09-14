@@ -108,4 +108,13 @@ body {
 .bg-gradient-to-br.from-brand-500.to-brand-600 {
   background-image: linear-gradient(to bottom right, #3b82f6, #2563eb);
 }
+
+/* Sidebar transition animations */
+.flex-1.grid {
+  transition: all 0.3s ease-in-out;
+}
+
+#sidebar nav a span:last-child {
+  transition: opacity 0.3s ease-in-out;
+}
 </style>

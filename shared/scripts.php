@@ -1,5 +1,12 @@
 <?php
 // Shared JavaScript functionality extracted from app.js
+
+// Helper function to get sidebar state from localStorage (client-side)
+function getSidebarState() {
+    return isset($_COOKIE['hr4_sidebar_collapsed']) ? 
+           filter_var($_COOKIE['hr4_sidebar_collapsed'], FILTER_VALIDATE_BOOLEAN) : 
+           false;
+}
 ?>
 <script>
 // Storage utilities
@@ -13,9 +20,12 @@ const storage = {
   },
   set(key, value) {
     localStorage.setItem(key, JSON.stringify(value));
+    // Also set cookie for server-side access
+    document.cookie = `hr4_${key.replace('.', '_')}=${value}; path=/; max-age=31536000`;
   },
   remove(key) {
     localStorage.removeItem(key);
+    document.cookie = `hr4_${key.replace('.', '_')}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
   },
 };
 
@@ -37,6 +47,33 @@ function setTheme(next) {
 document.addEventListener('DOMContentLoaded', function() {
   applyTheme();
   
+  // Initialize sidebar state
+  const sidebar = document.getElementById('sidebar');
+  if (sidebar) {
+    const isCollapsed = storage.get("hr4.sidebar.collapsed", false);
+    sidebar.dataset.collapsed = isCollapsed;
+    
+    // Apply the collapsed state immediately
+    const gridContainer = document.querySelector('.flex-1.grid');
+    if (gridContainer) {
+      if (isCollapsed) {
+        gridContainer.className = 'flex-1 grid lg:grid-cols-[72px_1fr]';
+      } else {
+        gridContainer.className = 'flex-1 grid lg:grid-cols-[260px_1fr]';
+      }
+    }
+    
+    // Update sidebar labels visibility
+    const labels = sidebar.querySelectorAll('nav a span:last-child');
+    labels.forEach(label => {
+      if (isCollapsed) {
+        label.classList.add('hidden');
+      } else {
+        label.classList.remove('hidden');
+      }
+    });
+  }
+  
   // Theme toggle functionality
   const themeToggle = document.getElementById('themeToggle');
   if (themeToggle) {
@@ -51,12 +88,47 @@ document.addEventListener('DOMContentLoaded', function() {
   const btnCollapse = document.getElementById('btnCollapse');
   if (btnCollapse) {
     btnCollapse.addEventListener('click', () => {
+      console.log('Sidebar collapse button clicked');
       const sidebar = document.getElementById('sidebar');
+      if (!sidebar) {
+        console.error('Sidebar element not found');
+        return;
+      }
+      
       const isCollapsed = sidebar.dataset.collapsed === 'true';
-      sidebar.dataset.collapsed = !isCollapsed;
-      // Reload page to apply layout change
-      location.reload();
+      const newState = !isCollapsed;
+      console.log('Current state:', isCollapsed, 'New state:', newState);
+      
+      // Update sidebar state
+      sidebar.dataset.collapsed = newState;
+      storage.set("hr4.sidebar.collapsed", newState);
+      
+      // Update grid layout
+      const gridContainer = document.querySelector('.flex-1.grid');
+      if (gridContainer) {
+        if (newState) {
+          gridContainer.className = 'flex-1 grid lg:grid-cols-[72px_1fr]';
+        } else {
+          gridContainer.className = 'flex-1 grid lg:grid-cols-[260px_1fr]';
+        }
+        console.log('Grid layout updated');
+      } else {
+        console.error('Grid container not found');
+      }
+      
+      // Update sidebar labels visibility
+      const labels = sidebar.querySelectorAll('nav a span:last-child');
+      labels.forEach(label => {
+        if (newState) {
+          label.classList.add('hidden');
+        } else {
+          label.classList.remove('hidden');
+        }
+      });
+      console.log('Updated', labels.length, 'sidebar labels');
     });
+  } else {
+    console.error('Sidebar collapse button not found');
   }
   
   // Mobile sidebar functionality
@@ -83,11 +155,26 @@ document.addEventListener('DOMContentLoaded', function() {
       
       document.body.insertAdjacentHTML('beforeend', sheetHtml);
       const sheetEl = document.querySelector("[data-sheet]");
+      
+      // Add click handlers to close the mobile sidebar
+      const overlay = sheetEl.querySelector("[data-sheet-overlay]");
+      const panel = sheetEl.querySelector("[data-sheet-panel]");
+      
+      const closeSheet = () => sheetEl.remove();
+      
+      overlay?.addEventListener("click", closeSheet);
       sheetEl?.addEventListener("click", (e) => {
-        if (e.target && (e.target.matches("[data-sheet]") || e.target.matches("[data-sheet-overlay]"))) {
-          sheetEl.remove();
-        }
+        if (e.target === sheetEl) closeSheet();
       });
+      
+      // Close on escape key
+      const handleEscape = (e) => {
+        if (e.key === 'Escape') {
+          closeSheet();
+          document.removeEventListener('keydown', handleEscape);
+        }
+      };
+      document.addEventListener('keydown', handleEscape);
     });
   }
   

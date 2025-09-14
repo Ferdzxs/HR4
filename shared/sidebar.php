@@ -17,16 +17,11 @@ function renderSidebar($sidebarItems = [], $activeId = '', $sidebarCollapsed = f
     }
     
     return '
-        <div class="flex-1 grid ' . $gridCols . '">
-            <aside id="sidebar" data-collapsed="' . ($sidebarCollapsed ? 'true' : 'false') . '" class="hidden lg:block border-r border-[hsl(var(--border))] overflow-y-auto">
-                <nav class="p-2">
-                    ' . $sidebarHtml . '
-                </nav>
-            </aside>
-            <main class="overflow-y-auto">
-                {{CONTENT}}
-            </main>
-        </div>
+        <aside id="sidebar" data-collapsed="' . ($sidebarCollapsed ? 'true' : 'false') . '" class="hidden lg:block border-r border-[hsl(var(--border))] overflow-y-auto">
+            <nav class="p-2">
+                ' . $sidebarHtml . '
+            </nav>
+        </aside>
     ';
 }
 ?>
