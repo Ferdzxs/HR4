@@ -1,0 +1,62 @@
+<?php
+// Hospital Employee My Profile Page
+include_once __DIR__ . '/../../shared/header.php';
+include_once __DIR__ . '/../../shared/sidebar.php';
+include_once __DIR__ . '/../../shared/styles.php';
+include_once __DIR__ . '/../../shared/scripts.php';
+include_once __DIR__ . '/../../rbac.php';
+
+
+
+$activeId = 'profile';
+
+
+
+$sidebarItems = $SIDEBAR_ITEMS[$user['role']] ?? [];
+
+
+?>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HR4 - My Profile</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <?php include __DIR__ . '/../../shared/styles.php'; ?>
+</head>
+<body>
+    <div id="app" class="h-screen">
+        <div class="h-full flex flex-col">
+            <?php echo renderHeader($user, $sidebarCollapsed); ?>
+            <?php echo renderSidebar($sidebarItems, $activeId, $sidebarCollapsed); ?>
+            <main class="flex-1 overflow-y-auto">
+                
+                <section class="p-4 lg:p-6 space-y-4">
+                <div>
+                <h1 class="text-lg font-semibold">My Profile</h1>
+                <p class="text-xs text-slate-500 mt-1">Personal info, employment details, and security</p>
+                </div>
+                <div class="space-y-4">
+                <div class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] text-[hsl(var(--card-foreground))] shadow-sm">
+                <div class="p-4 border-b border-[hsl(var(--border))] font-semibold">Personal Information</div>
+                <div class="p-4 text-sm text-slate-600 dark:text-slate-300">Name, contacts, address.</div>
+                </div>
+                <div class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] text-[hsl(var(--card-foreground))] shadow-sm">
+                <div class="p-4 border-b border-[hsl(var(--border))] font-semibold">Employment Details</div>
+                <div class="p-4 text-sm text-slate-600 dark:text-slate-300">Department, position, status.</div>
+                </div>
+                <div class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] text-[hsl(var(--card-foreground))] shadow-sm">
+                <div class="p-4 border-b border-[hsl(var(--border))] font-semibold">Security Settings</div>
+                <div class="p-4 text-sm text-slate-600 dark:text-slate-300">Password & 2FA configuration.</div>
+                </div>
+                </div>
+                </section>
+
+            </main>
+        </div>
+    </div>
+    <?php include __DIR__ . '/../../shared/scripts.php'; ?>
+</body>
+</html>
