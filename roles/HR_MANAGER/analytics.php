@@ -2,9 +2,7 @@
 // HR Manager Analytics Page
 include_once __DIR__ . '/../../shared/header.php';
 include_once __DIR__ . '/../../shared/sidebar.php';
-include_once __DIR__ . '/../../shared/styles.php';
-include_once __DIR__ . '/../../shared/scripts.php';
-include_once __DIR__ . '/../../rbac.php';
+include_once __DIR__ . '/../../routing/rbac.php';
 
 
 
@@ -19,70 +17,78 @@ $sidebarItems = $SIDEBAR_ITEMS[$user['role']] ?? [];
 
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HR4 - Analytics Hub</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <?php include __DIR__ . '/../../shared/styles.php'; ?>
+    <link rel="stylesheet" href="/HR4_COMPEN&INTELLI/shared/styles.css">
 </head>
+
 <body>
     <div id="app" class="h-screen">
         <div class="h-full flex flex-col">
             <?php echo renderHeader($user, $sidebarCollapsed); ?>
-            <div class="flex-1 grid <?php echo $sidebarCollapsed ? 'lg:grid-cols-[72px_1fr]' : 'lg:grid-cols-[260px_1fr]'; ?>">
+            <div
+                class="flex-1 grid <?php echo $sidebarCollapsed ? 'lg:grid-cols-[72px_1fr]' : 'lg:grid-cols-[260px_1fr]'; ?>">
                 <?php echo renderSidebar($sidebarItems, $activeId, $sidebarCollapsed); ?>
                 <main class="overflow-y-auto">
-                
-                <section class="p-4 lg:p-6 space-y-4">
-                <div>
-                <h1 class="text-lg font-semibold">Analytics Hub</h1>
-                <p class="text-xs text-slate-500 mt-1">Real-time workforce and payroll analytics</p>
-                </div>
-                <div class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">
-                <div class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
-                <div class="text-xs text-slate-500 mb-1">Headcount</div>
-                <div class="text-2xl font-semibold">—</div>
-                </div>
-                <div class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
-                <div class="text-xs text-slate-500 mb-1">Turnover</div>
-                <div class="text-2xl font-semibold">—</div>
-                </div>
-                <div class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
-                <div class="text-xs text-slate-500 mb-1">Labor Cost</div>
-                <div class="text-2xl font-semibold">—</div>
-                </div>
-                <div class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
-                <div class="text-xs text-slate-500 mb-1">Overtime</div>
-                <div class="text-2xl font-semibold">—</div>
-                </div>
-                </div>
-                <div class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] text-[hsl(var(--card-foreground))] shadow-sm">
-                <div class="p-4 border-b border-[hsl(var(--border))] font-semibold">Charts</div>
-                <div class="p-4 text-sm text-slate-600 dark:text-slate-300">Interactive charts placeholder.</div>
-                <div class="p-4 border-t border-[hsl(var(--border))]">
-                <div class="flex flex-col sm:flex-row gap-2 sm:items-center justify-between">
-                <div class="flex gap-2">
-                <select id="range" class="flex h-10 w-full rounded-md border border-[hsl(var(--input))] bg-transparent px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2">
-                <option value="mtd">MTD</option>
-                <option value="qtd">QTD</option>
-                <option value="ytd">YTD</option>
-                </select>
-                <select id="gran" class="flex h-10 w-full rounded-md border border-[hsl(var(--input))] bg-transparent px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2">
-                <option value="month">Monthly</option>
-                <option value="quarter">Quarterly</option>
-                </select>
-                </div>
-                <div></div>
-                </div>
-                </div>
-                </div>
-                </section>
+
+                    <section class="p-4 lg:p-6 space-y-4">
+                        <div>
+                            <h1 class="text-lg font-semibold">Analytics Hub</h1>
+                            <p class="text-xs text-slate-500 mt-1">Real-time workforce and payroll analytics</p>
+                        </div>
+                        <div class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                            <div class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
+                                <div class="text-xs text-slate-500 mb-1">Headcount</div>
+                                <div class="text-2xl font-semibold">—</div>
+                            </div>
+                            <div class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
+                                <div class="text-xs text-slate-500 mb-1">Turnover</div>
+                                <div class="text-2xl font-semibold">—</div>
+                            </div>
+                            <div class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
+                                <div class="text-xs text-slate-500 mb-1">Labor Cost</div>
+                                <div class="text-2xl font-semibold">—</div>
+                            </div>
+                            <div class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
+                                <div class="text-xs text-slate-500 mb-1">Overtime</div>
+                                <div class="text-2xl font-semibold">—</div>
+                            </div>
+                        </div>
+                        <div
+                            class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] text-[hsl(var(--card-foreground))] shadow-sm">
+                            <div class="p-4 border-b border-[hsl(var(--border))] font-semibold">Charts</div>
+                            <div class="p-4 text-sm text-slate-600 dark:text-slate-300">Interactive charts placeholder.
+                            </div>
+                            <div class="p-4 border-t border-[hsl(var(--border))]">
+                                <div class="flex flex-col sm:flex-row gap-2 sm:items-center justify-between">
+                                    <div class="flex gap-2">
+                                        <select id="range"
+                                            class="flex h-10 w-full rounded-md border border-[hsl(var(--input))] bg-transparent px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2">
+                                            <option value="mtd">MTD</option>
+                                            <option value="qtd">QTD</option>
+                                            <option value="ytd">YTD</option>
+                                        </select>
+                                        <select id="gran"
+                                            class="flex h-10 w-full rounded-md border border-[hsl(var(--input))] bg-transparent px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2">
+                                            <option value="month">Monthly</option>
+                                            <option value="quarter">Quarterly</option>
+                                        </select>
+                                    </div>
+                                    <div></div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
 
                 </main>
             </div>
         </div>
     </div>
-    <?php include __DIR__ . '/../../shared/scripts.php'; ?>
+    <script src="/HR4_COMPEN&INTELLI/shared/scripts.js"></script>
 </body>
+
 </html>

@@ -2,18 +2,23 @@
 // User authentication class
 require_once 'database.php';
 
-class Auth {
+class Auth
+{
     private $conn;
     private $table_name = "users";
     private $is_pdo = false;
+    private $lockoutWindowSeconds = 60; // Lockout window for failed attempts
+    private $maxAttempts = 5; // Maximum allowed attempts within window
 
-    public function __construct() {
+    public function __construct()
+    {
         $database = new Database();
         $this->conn = $database->getConnection();
         $this->is_pdo = ($this->conn instanceof PDO);
     }
 
-    public function authenticate($username, $password) {
+    public function authenticate($username, $password)
+    {
         $query = "SELECT u.id, u.username, u.password_hash, r.role_name, e.id as employee_id, 
                          e.first_name, e.last_name, e.employee_number
                   FROM " . $this->table_name . " u
@@ -26,11 +31,11 @@ class Auth {
             $stmt->bindParam(1, $username);
             $stmt->execute();
 
-            if($stmt->rowCount() > 0) {
+            if ($stmt->rowCount() > 0) {
                 $row = $stmt->fetch(PDO::FETCH_ASSOC);
-                
+
                 // Verify password
-                if(password_verify($password, $row['password_hash'])) {
+                if (password_verify($password, $row['password_hash'])) {
                     return [
                         'id' => $row['id'],
                         'username' => $row['username'],
@@ -49,11 +54,11 @@ class Auth {
             $stmt->execute();
             $result = $stmt->get_result();
 
-            if($result->num_rows > 0) {
+            if ($result->num_rows > 0) {
                 $row = $result->fetch_assoc();
-                
+
                 // Verify password
-                if(password_verify($password, $row['password_hash'])) {
+                if (password_verify($password, $row['password_hash'])) {
                     return [
                         'id' => $row['id'],
                         'username' => $row['username'],
@@ -66,11 +71,12 @@ class Auth {
                 }
             }
         }
-        
+
         return false;
     }
 
-    public function getUserById($user_id) {
+    public function getUserById($user_id)
+    {
         $query = "SELECT u.id, u.username, r.role_name, e.id as employee_id, 
                          e.first_name, e.last_name, e.employee_number
                   FROM " . $this->table_name . " u
@@ -83,7 +89,7 @@ class Auth {
             $stmt->bindParam(1, $user_id);
             $stmt->execute();
 
-            if($stmt->rowCount() > 0) {
+            if ($stmt->rowCount() > 0) {
                 return $stmt->fetch(PDO::FETCH_ASSOC);
             }
         } else {
@@ -92,15 +98,16 @@ class Auth {
             $stmt->execute();
             $result = $stmt->get_result();
 
-            if($result->num_rows > 0) {
+            if ($result->num_rows > 0) {
                 return $result->fetch_assoc();
             }
         }
-        
+
         return false;
     }
 
-    public function createSession($user_id, $session_token, $expires_at, $ip_address) {
+    public function createSession($user_id, $session_token, $expires_at, $ip_address)
+    {
         $query = "INSERT INTO user_sessions (user_id, session_token, expires_at, ip_address) 
                   VALUES (?, ?, ?, ?)";
 
@@ -118,7 +125,8 @@ class Auth {
         }
     }
 
-    public function validateSession($session_token) {
+    public function validateSession($session_token)
+    {
         $query = "SELECT u.id, u.username, r.role_name, e.id as employee_id, 
                          e.first_name, e.last_name, e.employee_number
                   FROM user_sessions s
@@ -133,7 +141,7 @@ class Auth {
             $stmt->bindParam(1, $session_token);
             $stmt->execute();
 
-            if($stmt->rowCount() > 0) {
+            if ($stmt->rowCount() > 0) {
                 $row = $stmt->fetch(PDO::FETCH_ASSOC);
                 return [
                     'id' => $row['id'],
@@ -151,7 +159,7 @@ class Auth {
             $stmt->execute();
             $result = $stmt->get_result();
 
-            if($result->num_rows > 0) {
+            if ($result->num_rows > 0) {
                 $row = $result->fetch_assoc();
                 return [
                     'id' => $row['id'],
@@ -164,11 +172,12 @@ class Auth {
                 ];
             }
         }
-        
+
         return false;
     }
 
-    public function validateRememberToken($remember_token) {
+    public function validateRememberToken($remember_token)
+    {
         // Check if remember token exists and is valid
         $query = "SELECT u.id, u.username, r.role_name, e.id as employee_id, 
                          e.first_name, e.last_name, e.employee_number
@@ -184,7 +193,7 @@ class Auth {
             $stmt->bindParam(1, $remember_token);
             $stmt->execute();
 
-            if($stmt->rowCount() > 0) {
+            if ($stmt->rowCount() > 0) {
                 $row = $stmt->fetch(PDO::FETCH_ASSOC);
                 return [
                     'id' => $row['id'],
@@ -202,7 +211,7 @@ class Auth {
             $stmt->execute();
             $result = $stmt->get_result();
 
-            if($result->num_rows > 0) {
+            if ($result->num_rows > 0) {
                 $row = $result->fetch_assoc();
                 return [
                     'id' => $row['id'],
@@ -215,13 +224,14 @@ class Auth {
                 ];
             }
         }
-        
+
         return false;
     }
 
-    public function destroySession($session_token) {
+    public function destroySession($session_token)
+    {
         $query = "DELETE FROM user_sessions WHERE session_token = ?";
-        
+
         if ($this->is_pdo) {
             $stmt = $this->conn->prepare($query);
             $stmt->bindParam(1, $session_token);
@@ -233,29 +243,76 @@ class Auth {
         }
     }
 
-    public function isAccountLocked($username) {
+    public function isAccountLocked($username)
+    {
+        // Count attempts within the last lockout window using the database clock
+        // Using NOW() avoids PHP-DB clock drift
         $query = "SELECT COUNT(*) as attempts FROM login_attempts 
-                  WHERE username = ? AND attempt_time > DATE_SUB(NOW(), INTERVAL 15 MINUTE)";
-        
+                  WHERE username = ? 
+                  AND attempt_time > FROM_UNIXTIME(UNIX_TIMESTAMP(NOW()) - ?)";
+
         if ($this->is_pdo) {
             $stmt = $this->conn->prepare($query);
             $stmt->bindParam(1, $username);
+            $stmt->bindValue(2, (int) $this->lockoutWindowSeconds, PDO::PARAM_INT);
             $stmt->execute();
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
-            return $result['attempts'] >= 5;
+            return ((int) $result['attempts']) >= $this->maxAttempts;
         } else {
             $stmt = $this->conn->prepare($query);
-            $stmt->bind_param("s", $username);
+            $seconds = (int) $this->lockoutWindowSeconds;
+            $stmt->bind_param("si", $username, $seconds);
             $stmt->execute();
             $result = $stmt->get_result();
             $row = $result->fetch_assoc();
-            return $row['attempts'] >= 5;
+            return ((int) $row['attempts']) >= $this->maxAttempts;
         }
     }
 
-    public function recordFailedAttempt($username, $ip_address) {
+    public function getLockRemainingSeconds($username)
+    {
+        // Returns remaining seconds before the user can try again based on DB clock
+        $query = "SELECT 
+                    COUNT(*) AS attempts,
+                    TIMESTAMPDIFF(SECOND, MIN(attempt_time), NOW()) AS seconds_since_first
+                  FROM login_attempts 
+                  WHERE username = ? 
+                  AND attempt_time > FROM_UNIXTIME(UNIX_TIMESTAMP(NOW()) - ?)";
+
+        if ($this->is_pdo) {
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(1, $username);
+            $stmt->bindValue(2, (int) $this->lockoutWindowSeconds, PDO::PARAM_INT);
+            $stmt->execute();
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            $attempts = (int) ($row['attempts'] ?? 0);
+            $elapsed = (int) ($row['seconds_since_first'] ?? 0);
+            if ($attempts >= $this->maxAttempts) {
+                $remaining = $this->lockoutWindowSeconds - $elapsed;
+                return $remaining > 0 ? $remaining : 0;
+            }
+            return 0;
+        } else {
+            $stmt = $this->conn->prepare($query);
+            $seconds = (int) $this->lockoutWindowSeconds;
+            $stmt->bind_param("si", $username, $seconds);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $row = $result->fetch_assoc();
+            $attempts = (int) ($row['attempts'] ?? 0);
+            $elapsed = (int) ($row['seconds_since_first'] ?? 0);
+            if ($attempts >= $this->maxAttempts) {
+                $remaining = $this->lockoutWindowSeconds - $elapsed;
+                return $remaining > 0 ? $remaining : 0;
+            }
+            return 0;
+        }
+    }
+
+    public function recordFailedAttempt($username, $ip_address)
+    {
         $query = "INSERT INTO login_attempts (username, ip_address, attempt_time) VALUES (?, ?, NOW())";
-        
+
         if ($this->is_pdo) {
             $stmt = $this->conn->prepare($query);
             $stmt->bindParam(1, $username);
@@ -268,9 +325,10 @@ class Auth {
         }
     }
 
-    public function clearFailedAttempts($username) {
+    public function clearFailedAttempts($username)
+    {
         $query = "DELETE FROM login_attempts WHERE username = ?";
-        
+
         if ($this->is_pdo) {
             $stmt = $this->conn->prepare($query);
             $stmt->bindParam(1, $username);
@@ -282,29 +340,30 @@ class Auth {
         }
     }
 
-    public function validatePasswordStrength($password) {
+    public function validatePasswordStrength($password)
+    {
         $errors = [];
-        
+
         if (strlen($password) < 8) {
             $errors[] = "Password must be at least 8 characters long";
         }
-        
+
         if (!preg_match('/[A-Z]/', $password)) {
             $errors[] = "Password must contain at least one uppercase letter";
         }
-        
+
         if (!preg_match('/[a-z]/', $password)) {
             $errors[] = "Password must contain at least one lowercase letter";
         }
-        
+
         if (!preg_match('/[0-9]/', $password)) {
             $errors[] = "Password must contain at least one number";
         }
-        
+
         if (!preg_match('/[^A-Za-z0-9]/', $password)) {
             $errors[] = "Password must contain at least one special character";
         }
-        
+
         return $errors;
     }
 }

@@ -14,7 +14,7 @@ if (extension_loaded('pdo_mysql')) {
         $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $use_pdo = true;
         echo "<p>✓ Connected to MySQL server using PDO</p>";
-    } catch(PDOException $e) {
+    } catch (PDOException $e) {
         echo "<p>⚠ PDO connection failed: " . $e->getMessage() . "</p>";
     }
 }
@@ -35,7 +35,7 @@ if (!$conn) {
 
 try {
     // Read and execute schema.sql
-    $schema = file_get_contents('schema.sql');
+    $schema = file_get_contents('scheme/schema.sql');
     if ($schema) {
         if ($use_pdo) {
             $conn->exec($schema);
@@ -54,9 +54,9 @@ try {
         echo "<p>✗ Error: Could not read schema.sql file</p>";
         exit;
     }
-    
+
     // Read and execute sample_data.sql
-    $sample_data = file_get_contents('sample_data.sql');
+    $sample_data = file_get_contents('scheme/sample_data.sql');
     if ($sample_data) {
         if ($use_pdo) {
             $conn->exec($sample_data);
@@ -75,7 +75,7 @@ try {
         echo "<p>✗ Error: Could not read sample_data.sql file</p>";
         exit;
     }
-    
+
     echo "<h3>Database Setup Complete!</h3>";
     echo "<p>You can now use the HR4 system with the following demo accounts:</p>";
     echo "<ul>";
@@ -88,8 +88,8 @@ try {
     echo "<li><strong>Executive:</strong> executive / exec123</li>";
     echo "</ul>";
     echo "<p><a href='fix_passwords.php'>Fix Passwords</a> | <a href='test_connection.php'>Test Connection</a> | <a href='login.php'>Go to Login</a></p>";
-    
-} catch(Exception $e) {
+
+} catch (Exception $e) {
     echo "<p>✗ Database error: " . $e->getMessage() . "</p>";
     echo "<p>Please make sure MySQL is running and the root user has no password (or update config/database.php)</p>";
 }

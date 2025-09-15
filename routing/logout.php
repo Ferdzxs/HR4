@@ -1,7 +1,7 @@
 <?php
 // HR4 Logout
 session_start();
-include_once 'config/auth.php';
+include_once '../config/auth.php';
 
 // Destroy database session if exists
 if (isset($_SESSION['user']['session_token'])) {
@@ -20,9 +20,14 @@ $_SESSION = array();
 // Destroy the session cookie
 if (ini_get("session.use_cookies")) {
     $params = session_get_cookie_params();
-    setcookie(session_name(), '', time() - 42000,
-        $params["path"], $params["domain"],
-        $params["secure"], $params["httponly"]
+    setcookie(
+        session_name(),
+        '',
+        time() - 42000,
+        $params["path"],
+        $params["domain"],
+        $params["secure"],
+        $params["httponly"]
     );
 }
 
@@ -30,6 +35,6 @@ if (ini_get("session.use_cookies")) {
 session_destroy();
 
 // Redirect to login with success message
-header('Location: login.php?logged_out=1');
+header('Location: login.php');
 exit;
 ?>
