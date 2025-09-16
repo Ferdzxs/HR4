@@ -2,132 +2,176 @@
 // HR Manager Analytics Hub Page
 include_once __DIR__ . '/../../shared/header.php';
 include_once __DIR__ . '/../../shared/sidebar.php';
+include_once __DIR__ . '/../../shared/database_helper.php';
 include_once __DIR__ . '/../../routing/rbac.php';
-include_once __DIR__ . '/../../config/database.php';
 
 $activeId = 'analytics';
 $sidebarItems = $SIDEBAR_ITEMS[$user['role']] ?? [];
 
-// Fetch analytics data
-try {
-    // Workforce analytics
-    $totalEmployees = $pdo->query("SELECT COUNT(*) FROM employees WHERE status = 'Active'")->fetchColumn();
-    $totalDepartments = $pdo->query("SELECT COUNT(*) FROM departments")->fetchColumn();
-    $averageAge = $pdo->query("SELECT AVG(YEAR(CURDATE()) - YEAR(birth_date)) FROM employee_details ed JOIN employees e ON ed.employee_id = e.id WHERE e.status = 'Active'")->fetchColumn();
+// Initialize database helper
+$dbHelper = new DatabaseHelper();
 
-    // Department distribution
-    $departmentStats = $pdo->query("SELECT d.department_name, COUNT(e.id) as employee_count, 
-                                   AVG(sg.min_salary + sg.max_salary) / 2 as avg_salary
-                                   FROM departments d
-                                   LEFT JOIN employees e ON d.id = e.department_id AND e.status = 'Active'
-                                   LEFT JOIN positions p ON e.position_id = p.id
-                                   LEFT JOIN salary_grades sg ON p.salary_grade_id = sg.id
-                                   GROUP BY d.id, d.department_name
-                                   ORDER BY employee_count DESC")->fetchAll();
+// Handle CRUD operations
+$message = '';
+$messageType = '';
 
-    // Payroll analytics
-    $totalPayroll = $pdo->query("SELECT SUM(net_pay) FROM payroll_entries pe 
-                                JOIN payroll_periods pp ON pe.period_id = pp.id 
-                                WHERE pp.status = 'Processed' AND pp.period_start >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)")->fetchColumn();
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $action = $_POST['action'] ?? '';
 
-    $averageSalary = $pdo->query("SELECT AVG(net_pay) FROM payroll_entries pe 
-                                 JOIN payroll_periods pp ON pe.period_id = pp.id 
-                                 WHERE pp.status = 'Processed' AND pp.period_start >= DATE_SUB(CURDATE(), INTERVAL 3 MONTH)")->fetchColumn();
+    if ($action === 'create_metric') {
+        try {
+            $metricName = $_POST['metric_name'] ?? '';
+            $metricType = $_POST['metric_type'] ?? '';
+            $description = $_POST['description'] ?? '';
+            $formula = $_POST['formula'] ?? '';
+            $isActive = isset($_POST['is_active']) ? 1 : 0;
 
-    // Benefits analytics
-    $totalBenefitsCost = $pdo->query("SELECT SUM(hp.premium_amount * COUNT(be.id)) FROM hmo_plans hp 
-                                     LEFT JOIN benefit_enrollments be ON hp.id = be.plan_id AND be.status = 'Active'
-                                     GROUP BY hp.id")->fetchColumn();
+            $dbHelper->query("
+                INSERT INTO analytics_metrics (metric_name, metric_type, description, formula, is_active) 
+                VALUES (?, ?, ?, ?, ?)
+            ", [$metricName, $metricType, $description, $formula, $isActive]);
 
-    $activeEnrollments = $pdo->query("SELECT COUNT(*) FROM benefit_enrollments WHERE status = 'Active'")->fetchColumn();
+            $message = 'Analytics metric created successfully!';
+            $messageType = 'success';
+        } catch (Exception $e) {
+            $message = 'Error creating metric: ' . $e->getMessage();
+            $messageType = 'error';
+        }
+    } elseif ($action === 'update_metric') {
+        try {
+            $metricId = intval($_POST['metric_id'] ?? 0);
+            $metricName = $_POST['metric_name'] ?? '';
+            $metricType = $_POST['metric_type'] ?? '';
+            $description = $_POST['description'] ?? '';
+            $formula = $_POST['formula'] ?? '';
+            $isActive = isset($_POST['is_active']) ? 1 : 0;
 
-    // Recent trends (last 6 months)
-    $monthlyTrends = $pdo->query("SELECT 
-                                 DATE_FORMAT(pp.period_start, '%Y-%m') as month,
-                                 COUNT(DISTINCT pe.employee_id) as employees,
-                                 SUM(pe.net_pay) as total_payroll,
-                                 AVG(pe.net_pay) as avg_payroll
-                                 FROM payroll_periods pp
-                                 LEFT JOIN payroll_entries pe ON pp.id = pe.period_id
-                                 WHERE pp.period_start >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
-                                 GROUP BY DATE_FORMAT(pp.period_start, '%Y-%m')
-                                 ORDER BY month DESC")->fetchAll();
+            $dbHelper->query("
+                UPDATE analytics_metrics 
+                SET metric_name = ?, metric_type = ?, description = ?, formula = ?, is_active = ?
+                WHERE id = ?
+            ", [$metricName, $metricType, $description, $formula, $isActive, $metricId]);
 
-    // Gender distribution
-    $genderStats = $pdo->query("SELECT gender, COUNT(*) as count FROM employee_details ed 
-                               JOIN employees e ON ed.employee_id = e.id 
-                               WHERE e.status = 'Active' GROUP BY gender")->fetchAll();
+            $message = 'Analytics metric updated successfully!';
+            $messageType = 'success';
+        } catch (Exception $e) {
+            $message = 'Error updating metric: ' . $e->getMessage();
+            $messageType = 'error';
+        }
+    } elseif ($action === 'delete_metric') {
+        try {
+            $metricId = intval($_POST['metric_id'] ?? 0);
+            $dbHelper->query("DELETE FROM analytics_metrics WHERE id = ?", [$metricId]);
+            $message = 'Analytics metric deleted successfully!';
+            $messageType = 'success';
+        } catch (Exception $e) {
+            $message = 'Error deleting metric: ' . $e->getMessage();
+            $messageType = 'error';
+        }
+    } elseif ($action === 'create_report_template') {
+        try {
+            $templateName = $_POST['template_name'] ?? '';
+            $description = $_POST['description'] ?? '';
+            $templateType = $_POST['template_type'] ?? '';
+            $query = $_POST['query'] ?? '';
+            $isActive = isset($_POST['is_active']) ? 1 : 0;
 
-    // Employment type distribution
-    $employmentStats = $pdo->query("SELECT employment_type, COUNT(*) as count FROM employee_details ed 
-                                   JOIN employees e ON ed.employee_id = e.id 
-                                   WHERE e.status = 'Active' GROUP BY employment_type")->fetchAll();
+            $dbHelper->query("
+                INSERT INTO report_templates (template_name, description, template_type, query, is_active) 
+                VALUES (?, ?, ?, ?, ?)
+            ", [$templateName, $description, $templateType, $query, $isActive]);
 
-    // Top earners
-    $topEarners = $pdo->query("SELECT e.first_name, e.last_name, e.employee_number, d.department_name, 
-                              AVG(pe.net_pay) as avg_salary
-                              FROM payroll_entries pe
-                              JOIN employees e ON pe.employee_id = e.id
-                              LEFT JOIN departments d ON e.department_id = d.id
-                              JOIN payroll_periods pp ON pe.period_id = pp.id
-                              WHERE pp.status = 'Processed' AND pp.period_start >= DATE_SUB(CURDATE(), INTERVAL 3 MONTH)
-                              GROUP BY e.id
-                              ORDER BY avg_salary DESC
-                              LIMIT 10")->fetchAll();
+            $message = 'Report template created successfully!';
+            $messageType = 'success';
+        } catch (Exception $e) {
+            $message = 'Error creating report template: ' . $e->getMessage();
+            $messageType = 'error';
+        }
+    } elseif ($action === 'update_report_template') {
+        try {
+            $templateId = intval($_POST['template_id'] ?? 0);
+            $templateName = $_POST['template_name'] ?? '';
+            $description = $_POST['description'] ?? '';
+            $templateType = $_POST['template_type'] ?? '';
+            $query = $_POST['query'] ?? '';
+            $isActive = isset($_POST['is_active']) ? 1 : 0;
 
-    // Real-time metrics
-    $newHiresThisMonth = $pdo->query("SELECT COUNT(*) FROM employees WHERE hire_date >= DATE_SUB(CURDATE(), INTERVAL 1 MONTH)")->fetchColumn();
-    $resignationsThisMonth = $pdo->query("SELECT COUNT(*) FROM employees WHERE resignation_date >= DATE_SUB(CURDATE(), INTERVAL 1 MONTH)")->fetchColumn();
-    $pendingApprovals = $pdo->query("SELECT COUNT(*) FROM payroll_entries pe JOIN payroll_periods pp ON pe.period_id = pp.id WHERE pp.status = 'Open'")->fetchColumn();
-    $activeClaims = $pdo->query("SELECT COUNT(*) FROM benefit_claims WHERE status = 'Pending'")->fetchColumn();
+            $dbHelper->query("
+                UPDATE report_templates 
+                SET template_name = ?, description = ?, template_type = ?, query = ?, is_active = ?
+                WHERE id = ?
+            ", [$templateName, $description, $templateType, $query, $isActive, $templateId]);
 
-    // Performance metrics
-    $avgProcessingTime = $pdo->query("SELECT AVG(DATEDIFF(processed_date, claim_date)) FROM benefit_claims WHERE status = 'Approved' AND processed_date IS NOT NULL")->fetchColumn();
-    $budgetUtilization = $pdo->query("SELECT (SUM(sg.min_salary + sg.max_salary) / 2 * COUNT(e.id)) / SUM(d.budget_allocation) * 100 
-                                     FROM departments d
-                                     LEFT JOIN employees e ON d.id = e.department_id AND e.status = 'Active'
-                                     LEFT JOIN positions p ON e.position_id = p.id
-                                     LEFT JOIN salary_grades sg ON p.salary_grade_id = sg.id
-                                     WHERE d.budget_allocation > 0")->fetchColumn();
+            $message = 'Report template updated successfully!';
+            $messageType = 'success';
+        } catch (Exception $e) {
+            $message = 'Error updating report template: ' . $e->getMessage();
+            $messageType = 'error';
+        }
+    } elseif ($action === 'delete_report_template') {
+        try {
+            $templateId = intval($_POST['template_id'] ?? 0);
+            $dbHelper->query("DELETE FROM report_templates WHERE id = ?", [$templateId]);
+            $message = 'Report template deleted successfully!';
+            $messageType = 'success';
+        } catch (Exception $e) {
+            $message = 'Error deleting report template: ' . $e->getMessage();
+            $messageType = 'error';
+        }
+    }
+}
 
-    // Turnover analysis
-    $turnoverRate = $pdo->query("SELECT (COUNT(CASE WHEN resignation_date >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH) THEN 1 END) / COUNT(*)) * 100 
-                                FROM employees")->fetchColumn();
+// Get analytics data
+$analyticsData = $dbHelper->getAnalyticsData();
+$departments = $dbHelper->getDepartments();
+$employees = $dbHelper->getEmployees(100); // Get more employees for analytics
+$compensationData = $dbHelper->getCompensationData();
 
-    // Cost per employee
-    $costPerEmployee = $pdo->query("SELECT (SUM(pe.net_pay) + COALESCE(SUM(hp.premium_amount * COUNT(be.id)), 0)) / COUNT(DISTINCT e.id)
-                                   FROM employees e
-                                   LEFT JOIN payroll_entries pe ON e.id = pe.employee_id
-                                   LEFT JOIN payroll_periods pp ON pe.period_id = pp.id AND pp.status = 'Processed'
-                                   LEFT JOIN benefit_enrollments be ON e.id = be.employee_id AND be.status = 'Active'
-                                   LEFT JOIN hmo_plans hp ON be.plan_id = hp.id
-                                   WHERE e.status = 'Active'")->fetchColumn();
+// Get analytics metrics and report templates for CRUD operations
+$analyticsMetrics = $dbHelper->fetchAll("SELECT * FROM analytics_metrics ORDER BY metric_name");
+$reportTemplates = $dbHelper->fetchAll("SELECT * FROM report_templates ORDER BY template_name");
 
-    // Department performance metrics
-    $departmentPerformance = $pdo->query("SELECT d.department_name, 
-                                         COUNT(e.id) as employee_count,
-                                         AVG(sg.min_salary + sg.max_salary) / 2 as avg_salary,
-                                         COUNT(CASE WHEN e.hire_date >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH) THEN 1 END) as new_hires,
-                                         COUNT(CASE WHEN e.resignation_date >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH) THEN 1 END) as resignations,
-                                         d.budget_allocation
-                                         FROM departments d
-                                         LEFT JOIN employees e ON d.id = e.department_id
-                                         LEFT JOIN positions p ON e.position_id = p.id
-                                         LEFT JOIN salary_grades sg ON p.salary_grade_id = sg.id
-                                         GROUP BY d.id
-                                         ORDER BY employee_count DESC")->fetchAll();
+// Calculate key metrics
+$totalEmployees = count($employees);
+$totalDepartments = count($departments);
+$avgSalary = $dbHelper->fetchOne("SELECT AVG(pe.basic_salary) as avg_salary FROM payroll_entries pe JOIN payroll_periods pp ON pe.period_id = pp.id WHERE pp.status = 'Processed' ORDER BY pp.period_end DESC LIMIT 1")['avg_salary'] ?? 0;
 
-} catch (PDOException $e) {
-    $totalEmployees = $totalDepartments = $averageAge = 0;
-    $departmentStats = [];
-    $totalPayroll = $averageSalary = $totalBenefitsCost = $activeEnrollments = 0;
-    $monthlyTrends = [];
-    $genderStats = [];
-    $employmentStats = [];
-    $topEarners = [];
-    $newHiresThisMonth = $resignationsThisMonth = $pendingApprovals = $activeClaims = 0;
-    $avgProcessingTime = $budgetUtilization = $turnoverRate = $costPerEmployee = 0;
-    $departmentPerformance = [];
+// Department headcount
+$deptHeadcount = [];
+foreach ($departments as $dept) {
+    $deptHeadcount[$dept['department_name']] = $dept['employee_count'];
+}
+
+// Salary distribution based on actual salary data
+$salaryRanges = [
+    'Under 30k' => 0,
+    '30k-50k' => 0,
+    '50k-75k' => 0,
+    '75k-100k' => 0,
+    'Over 100k' => 0
+];
+
+foreach ($compensationData as $emp) {
+    $salary = $emp['basic_salary'] ?? 0;
+    if ($salary < 30000)
+        $salaryRanges['Under 30k']++;
+    elseif ($salary < 50000)
+        $salaryRanges['30k-50k']++;
+    elseif ($salary < 75000)
+        $salaryRanges['50k-75k']++;
+    elseif ($salary < 100000)
+        $salaryRanges['75k-100k']++;
+    else
+        $salaryRanges['Over 100k']++;
+}
+
+// Get turnover rate from analytics data
+$turnoverRate = 0;
+foreach ($analyticsData as $metric) {
+    if ($metric['metric_type'] === 'Turnover Rate') {
+        $turnoverRate = $metric['metric_value'];
+        break;
+    }
 }
 ?>
 
@@ -157,181 +201,181 @@ try {
                             <p class="text-xs text-slate-500 mt-1">Real-time workforce and payroll analytics</p>
                         </div>
 
-                        <!-- Quick Actions -->
-                        <div class="flex flex-wrap gap-2">
-                            <button onclick="exportAnalytics()"
-                                class="bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] shadow hover:opacity-95 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-9 px-3">
-                                Export Report
-                            </button>
-                            <button onclick="openAdvancedAnalytics()"
-                                class="bg-purple-600 text-white shadow hover:opacity-95 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-9 px-3">
-                                Advanced Analytics
-                            </button>
-                            <button onclick="openPredictiveAnalytics()"
-                                class="bg-indigo-600 text-white shadow hover:opacity-95 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-9 px-3">
-                                Predictive Analytics
-                            </button>
-                            <button onclick="openRealTimeDashboard()"
-                                class="bg-blue-600 text-white shadow hover:opacity-95 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-9 px-3">
-                                Real-time Dashboard
-                            </button>
-                            <button onclick="generateCustomReport()"
-                                class="bg-orange-600 text-white shadow hover:opacity-95 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-9 px-3">
-                                Custom Report
-                            </button>
-                            <button onclick="refreshData()"
-                                class="bg-slate-600 text-white shadow hover:opacity-95 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-9 px-3">
-                                Refresh Data
-                            </button>
-                            <button id="autoRefreshBtn" onclick="toggleAutoRefresh()"
-                                class="bg-gray-600 text-white shadow hover:opacity-95 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-9 px-3">
-                                Enable Auto Refresh
-                            </button>
-                        </div>
+                        <!-- Message Display -->
+                        <?php if ($message): ?>
+                            <div
+                                class="rounded-lg border border-[hsl(var(--border))] p-4 <?php echo $messageType === 'success' ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'; ?>">
+                                <div class="flex items-center gap-2">
+                                    <svg class="w-5 h-5 <?php echo $messageType === 'success' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'; ?>"
+                                        fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <?php if ($messageType === 'success'): ?>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M5 13l4 4L19 7"></path>
+                                        <?php else: ?>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M6 18L18 6M6 6l12 12"></path>
+                                        <?php endif; ?>
+                                    </svg>
+                                    <span
+                                        class="text-sm font-medium <?php echo $messageType === 'success' ? 'text-green-800 dark:text-green-200' : 'text-red-800 dark:text-red-200'; ?>">
+                                        <?php echo htmlspecialchars($message); ?>
+                                    </span>
+                                </div>
+                            </div>
+                        <?php endif; ?>
 
                         <!-- Key Metrics -->
                         <div class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">
-                            <div class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
-                                <div class="text-xs text-slate-500 mb-1">Total Employees</div>
-                                <div class="text-2xl font-semibold"><?php echo number_format($totalEmployees); ?></div>
-                                <div class="text-xs text-blue-600 mt-1">Active workforce</div>
-                            </div>
-                            <div class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
-                                <div class="text-xs text-slate-500 mb-1">Departments</div>
-                                <div class="text-2xl font-semibold"><?php echo number_format($totalDepartments); ?>
+                            <div
+                                class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4 hover:shadow-md transition-shadow">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <div class="text-xs text-slate-500 mb-1">Total Employees</div>
+                                        <div class="text-2xl font-semibold">
+                                            <?php echo number_format($totalEmployees); ?>
+                                        </div>
+                                        <div class="text-xs text-green-600">+5% from last month</div>
+                                    </div>
+                                    <div
+                                        class="w-10 h-10 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex items-center justify-center">
+                                        <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none"
+                                            stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z">
+                                            </path>
+                                        </svg>
+                                    </div>
                                 </div>
-                                <div class="text-xs text-green-600 mt-1">Organizational units</div>
                             </div>
-                            <div class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
-                                <div class="text-xs text-slate-500 mb-1">Average Age</div>
-                                <div class="text-2xl font-semibold"><?php echo number_format($averageAge, 1); ?></div>
-                                <div class="text-xs text-purple-600 mt-1">Years</div>
-                            </div>
-                            <div class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
-                                <div class="text-xs text-slate-500 mb-1">Total Payroll</div>
-                                <div class="text-2xl font-semibold">₱<?php echo number_format($totalPayroll, 0); ?>
+                            <div
+                                class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4 hover:shadow-md transition-shadow">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <div class="text-xs text-slate-500 mb-1">Departments</div>
+                                        <div class="text-2xl font-semibold"><?php echo $totalDepartments; ?></div>
+                                        <div class="text-xs text-slate-500">Active departments</div>
+                                    </div>
+                                    <div
+                                        class="w-10 h-10 bg-green-100 dark:bg-green-900/20 rounded-lg flex items-center justify-center">
+                                        <svg class="w-5 h-5 text-green-600 dark:text-green-400" fill="none"
+                                            stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4">
+                                            </path>
+                                        </svg>
+                                    </div>
                                 </div>
-                                <div class="text-xs text-orange-600 mt-1">Last 12 months</div>
+                            </div>
+                            <div
+                                class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4 hover:shadow-md transition-shadow">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <div class="text-xs text-slate-500 mb-1">Average Salary</div>
+                                        <div class="text-2xl font-semibold">₱<?php echo number_format($avgSalary, 0); ?>
+                                        </div>
+                                        <div class="text-xs text-green-600">+3% from last period</div>
+                                    </div>
+                                    <div
+                                        class="w-10 h-10 bg-purple-100 dark:bg-purple-900/20 rounded-lg flex items-center justify-center">
+                                        <svg class="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none"
+                                            stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1">
+                                            </path>
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
+                            <div
+                                class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4 hover:shadow-md transition-shadow">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <div class="text-xs text-slate-500 mb-1">Turnover Rate</div>
+                                        <div class="text-2xl font-semibold">
+                                            <?php echo number_format($turnoverRate, 1); ?>%
+                                        </div>
+                                        <div class="text-xs text-red-600">+0.8% from last quarter</div>
+                                    </div>
+                                    <div
+                                        class="w-10 h-10 bg-orange-100 dark:bg-orange-900/20 rounded-lg flex items-center justify-center">
+                                        <svg class="w-5 h-5 text-orange-600 dark:text-orange-400" fill="none"
+                                            stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                                        </svg>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        <!-- Real-time Metrics -->
-                        <div class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                        <!-- Charts Section -->
+                        <div class="grid lg:grid-cols-2 gap-4">
+                            <!-- Department Headcount Chart -->
                             <div class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
-                                <div class="text-xs text-slate-500 mb-1">New Hires (30 days)</div>
-                                <div class="text-2xl font-semibold text-green-600">
-                                    <?php echo number_format($newHiresThisMonth); ?></div>
-                                <div class="text-xs text-green-600 mt-1">Recent additions</div>
+                                <h3 class="font-semibold mb-4">Department Headcount</h3>
+                                <div class="h-64">
+                                    <canvas id="headcountChart"></canvas>
+                                </div>
                             </div>
+
+                            <!-- Salary Distribution Chart -->
                             <div class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
-                                <div class="text-xs text-slate-500 mb-1">Resignations (30 days)</div>
-                                <div class="text-2xl font-semibold text-red-600">
-                                    <?php echo number_format($resignationsThisMonth); ?></div>
-                                <div class="text-xs text-red-600 mt-1">Recent departures</div>
-                            </div>
-                            <div class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
-                                <div class="text-xs text-slate-500 mb-1">Pending Approvals</div>
-                                <div class="text-2xl font-semibold text-orange-600">
-                                    <?php echo number_format($pendingApprovals); ?></div>
-                                <div class="text-xs text-orange-600 mt-1">Awaiting review</div>
-                            </div>
-                            <div class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
-                                <div class="text-xs text-slate-500 mb-1">Active Claims</div>
-                                <div class="text-2xl font-semibold text-blue-600">
-                                    <?php echo number_format($activeClaims); ?></div>
-                                <div class="text-xs text-blue-600 mt-1">In processing</div>
+                                <h3 class="font-semibold mb-4">Salary Distribution</h3>
+                                <div class="h-64">
+                                    <canvas id="salaryChart"></canvas>
+                                </div>
                             </div>
                         </div>
 
-                        <!-- Performance Metrics -->
-                        <div class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">
-                            <div class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
-                                <div class="text-xs text-slate-500 mb-1">Avg Processing Time</div>
-                                <div class="text-2xl font-semibold"><?php echo number_format($avgProcessingTime, 1); ?>
-                                    days</div>
-                                <div class="text-xs text-purple-600 mt-1">Claims processing</div>
-                            </div>
-                            <div class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
-                                <div class="text-xs text-slate-500 mb-1">Budget Utilization</div>
-                                <div class="text-2xl font-semibold"><?php echo number_format($budgetUtilization, 1); ?>%
-                                </div>
-                                <div class="text-xs text-indigo-600 mt-1">Department budgets</div>
-                            </div>
-                            <div class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
-                                <div class="text-xs text-slate-500 mb-1">Turnover Rate</div>
-                                <div class="text-2xl font-semibold"><?php echo number_format($turnoverRate, 1); ?>%
-                                </div>
-                                <div class="text-xs text-pink-600 mt-1">Annual rate</div>
-                            </div>
-                            <div class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
-                                <div class="text-xs text-slate-500 mb-1">Cost per Employee</div>
-                                <div class="text-2xl font-semibold">₱<?php echo number_format($costPerEmployee, 0); ?>
-                                </div>
-                                <div class="text-xs text-teal-600 mt-1">Monthly average</div>
-                            </div>
-                        </div>
-
-                        <!-- Department Performance Dashboard -->
+                        <!-- Department Analytics Table -->
                         <div class="rounded-lg border border-[hsl(var(--border))] overflow-hidden">
-                            <div class="p-3 border-b border-[hsl(var(--border))] bg-[hsl(var(--secondary))]">
-                                <div class="flex flex-col sm:flex-row gap-2 sm:items-center justify-between">
-                                    <div class="font-semibold">Department Performance Dashboard</div>
-                                    <div class="text-sm text-slate-500">Comprehensive department metrics</div>
-                                </div>
+                            <div class="p-4 border-b border-[hsl(var(--border))] bg-[hsl(var(--secondary))]">
+                                <h3 class="font-semibold">Department Analytics</h3>
                             </div>
                             <div class="overflow-x-auto">
                                 <table class="min-w-full text-sm">
                                     <thead class="bg-[hsl(var(--secondary))]">
                                         <tr>
                                             <th class="text-left px-3 py-2 font-semibold">Department</th>
-                                            <th class="text-left px-3 py-2 font-semibold">Employees</th>
-                                            <th class="text-left px-3 py-2 font-semibold">Avg Salary</th>
-                                            <th class="text-left px-3 py-2 font-semibold">New Hires (12m)</th>
-                                            <th class="text-left px-3 py-2 font-semibold">Resignations (12m)</th>
+                                            <th class="text-left px-3 py-2 font-semibold">Headcount</th>
                                             <th class="text-left px-3 py-2 font-semibold">Budget</th>
-                                            <th class="text-left px-3 py-2 font-semibold">Utilization</th>
+                                            <th class="text-left px-3 py-2 font-semibold">Budget per Employee</th>
+                                            <th class="text-left px-3 py-2 font-semibold">Head</th>
+                                            <th class="text-left px-3 py-2 font-semibold">Status</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <?php foreach ($departmentPerformance as $dept): ?>
-                                            <?php
-                                            $utilization = $dept['budget_allocation'] > 0 ? (($dept['avg_salary'] * $dept['employee_count']) / $dept['budget_allocation']) * 100 : 0;
-                                            $turnoverRate = $dept['employee_count'] > 0 ? ($dept['resignations'] / $dept['employee_count']) * 100 : 0;
-                                            ?>
+                                        <?php foreach ($departments as $dept): ?>
                                             <tr
-                                                class="border-b border-[hsl(var(--border))] hover:bg-[hsl(var(--secondary))]">
-                                                <td class="px-3 py-3">
-                                                    <div class="font-medium">
-                                                        <?php echo htmlspecialchars($dept['department_name']); ?></div>
+                                                class="border-t border-[hsl(var(--border))] hover:bg-[hsl(var(--accent))] transition-colors">
+                                                <td class="px-3 py-3 font-medium text-slate-900 dark:text-slate-100">
+                                                    <?php echo htmlspecialchars($dept['department_name']); ?>
                                                 </td>
                                                 <td class="px-3 py-3">
-                                                    <div class="font-medium">
-                                                        <?php echo number_format($dept['employee_count']); ?></div>
+                                                    <div class="flex items-center gap-2">
+                                                        <span
+                                                            class="font-semibold"><?php echo $dept['employee_count']; ?></span>
+                                                        <div class="w-16 bg-slate-200 dark:bg-slate-700 rounded-full h-2">
+                                                            <div class="bg-blue-600 h-2 rounded-full"
+                                                                style="width: <?php echo min(100, ($dept['employee_count'] / max(array_column($departments, 'employee_count'))) * 100); ?>%">
+                                                            </div>
+                                                        </div>
+                                                    </div>
                                                 </td>
-                                                <td class="px-3 py-3">₱<?php echo number_format($dept['avg_salary'], 0); ?>
+                                                <td class="px-3 py-3 text-slate-600 dark:text-slate-300">
+                                                    ₱<?php echo number_format($dept['budget_allocation'], 0); ?>
+                                                </td>
+                                                <td class="px-3 py-3 text-slate-600 dark:text-slate-300">
+                                                    ₱<?php echo number_format($dept['budget_allocation'] / max(1, $dept['employee_count']), 0); ?>
+                                                </td>
+                                                <td class="px-3 py-3 text-slate-600 dark:text-slate-300">
+                                                    <?php echo htmlspecialchars($dept['head_name'] ?? 'Not assigned'); ?>
                                                 </td>
                                                 <td class="px-3 py-3">
                                                     <span
-                                                        class="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">
-                                                        <?php echo number_format($dept['new_hires']); ?>
+                                                        class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400">
+                                                        Active
                                                     </span>
-                                                </td>
-                                                <td class="px-3 py-3">
-                                                    <span class="px-2 py-1 text-xs bg-red-100 text-red-800 rounded-full">
-                                                        <?php echo number_format($dept['resignations']); ?>
-                                                    </span>
-                                                </td>
-                                                <td class="px-3 py-3">
-                                                    ₱<?php echo number_format($dept['budget_allocation'], 0); ?></td>
-                                                <td class="px-3 py-3">
-                                                    <div class="flex items-center space-x-2">
-                                                        <div class="w-16 bg-gray-200 rounded-full h-2">
-                                                            <div class="bg-blue-600 h-2 rounded-full"
-                                                                style="width: <?php echo min($utilization, 100); ?>%"></div>
-                                                        </div>
-                                                        <span
-                                                            class="text-xs"><?php echo number_format($utilization, 1); ?>%</span>
-                                                    </div>
                                                 </td>
                                             </tr>
                                         <?php endforeach; ?>
@@ -340,132 +384,115 @@ try {
                             </div>
                         </div>
 
-                        <!-- Charts Row -->
-                        <div class="grid lg:grid-cols-2 gap-4">
-                            <!-- Department Distribution -->
-                            <div class="rounded-lg border border-[hsl(var(--border))] overflow-hidden">
-                                <div class="p-3 border-b border-[hsl(var(--border))] bg-[hsl(var(--secondary))]">
-                                    <div class="font-semibold">Department Distribution</div>
-                                </div>
-                                <div class="p-4">
-                                    <canvas id="departmentChart" width="400" height="200"></canvas>
-                                </div>
-                            </div>
-
-                            <!-- Gender Distribution -->
-                            <div class="rounded-lg border border-[hsl(var(--border))] overflow-hidden">
-                                <div class="p-3 border-b border-[hsl(var(--border))] bg-[hsl(var(--secondary))]">
-                                    <div class="font-semibold">Gender Distribution</div>
-                                </div>
-                                <div class="p-4">
-                                    <canvas id="genderChart" width="400" height="200"></canvas>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Monthly Trends -->
-                        <div class="rounded-lg border border-[hsl(var(--border))] overflow-hidden">
-                            <div class="p-3 border-b border-[hsl(var(--border))] bg-[hsl(var(--secondary))]">
-                                <div class="font-semibold">Payroll Trends (Last 6 Months)</div>
+                        <!-- Recent Analytics Data -->
+                        <div
+                            class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] text-[hsl(var(--card-foreground))] shadow-sm">
+                            <div class="p-4 border-b border-[hsl(var(--border))] font-semibold">Recent Analytics Updates
                             </div>
                             <div class="p-4">
-                                <canvas id="trendsChart" width="800" height="300"></canvas>
-                            </div>
-                        </div>
-
-                        <!-- Department Statistics -->
-                        <div class="rounded-lg border border-[hsl(var(--border))] overflow-hidden">
-                            <div class="p-3 border-b border-[hsl(var(--border))] bg-[hsl(var(--secondary))]">
-                                <div class="flex flex-col sm:flex-row gap-2 sm:items-center justify-between">
-                                    <div class="font-semibold">Department Statistics</div>
-                                    <div class="text-sm text-slate-500">Employee count and average salary</div>
-                                </div>
-                            </div>
-                            <div class="overflow-x-auto">
-                                <table class="min-w-full text-sm">
-                                    <thead class="bg-[hsl(var(--secondary))]">
-                                        <tr>
-                                            <th class="text-left px-3 py-2 font-semibold">Department</th>
-                                            <th class="text-left px-3 py-2 font-semibold">Employees</th>
-                                            <th class="text-left px-3 py-2 font-semibold">Avg Salary</th>
-                                            <th class="text-left px-3 py-2 font-semibold">Distribution</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php foreach ($departmentStats as $dept): ?>
-                                            <tr
-                                                class="border-b border-[hsl(var(--border))] hover:bg-[hsl(var(--secondary))]">
-                                                <td class="px-3 py-3">
-                                                    <div class="font-medium">
-                                                        <?php echo htmlspecialchars($dept['department_name']); ?>
+                                <?php if (empty($analyticsData)): ?>
+                                    <div class="text-sm text-slate-500">No analytics data available</div>
+                                <?php else: ?>
+                                    <div class="space-y-3">
+                                        <?php foreach (array_slice($analyticsData, 0, 5) as $metric): ?>
+                                            <div
+                                                class="flex items-center justify-between p-3 rounded-lg border border-[hsl(var(--border))] hover:bg-[hsl(var(--accent))] transition-colors">
+                                                <div>
+                                                    <div class="text-sm font-medium text-slate-900 dark:text-slate-100">
+                                                        <?php echo htmlspecialchars($metric['metric_type']); ?>
                                                     </div>
-                                                </td>
-                                                <td class="px-3 py-3">
-                                                    <span class="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
-                                                        <?php echo $dept['employee_count']; ?> employees
-                                                    </span>
-                                                </td>
-                                                <td class="px-3 py-3">
-                                                    ₱<?php echo number_format($dept['avg_salary'] ?? 0, 0); ?>
-                                                </td>
-                                                <td class="px-3 py-3">
-                                                    <div class="w-full bg-gray-200 rounded-full h-2">
-                                                        <div class="bg-blue-600 h-2 rounded-full"
-                                                            style="width: <?php echo $totalEmployees > 0 ? ($dept['employee_count'] / $totalEmployees) * 100 : 0; ?>%">
-                                                        </div>
+                                                    <div class="text-xs text-slate-500">
+                                                        <?php echo $metric['department_name'] ? 'Department: ' . htmlspecialchars($metric['department_name']) : 'Organization-wide'; ?>
+                                                        •
+                                                        <?php echo date('M j, Y', strtotime($metric['calculation_date'])); ?>
                                                     </div>
-                                                </td>
-                                            </tr>
+                                                </div>
+                                                <div class="text-right">
+                                                    <div class="text-lg font-semibold text-blue-600 dark:text-blue-400">
+                                                        <?php echo number_format($metric['metric_value'], 2); ?>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         <?php endforeach; ?>
-                                    </tbody>
-                                </table>
+                                    </div>
+                                <?php endif; ?>
                             </div>
                         </div>
 
-                        <!-- Top Earners -->
+                        <!-- Analytics Metrics Management -->
                         <div class="rounded-lg border border-[hsl(var(--border))] overflow-hidden">
-                            <div class="p-3 border-b border-[hsl(var(--border))] bg-[hsl(var(--secondary))]">
+                            <div class="p-4 border-b border-[hsl(var(--border))] bg-[hsl(var(--secondary))]">
                                 <div class="flex flex-col sm:flex-row gap-2 sm:items-center justify-between">
-                                    <div class="font-semibold">Top Earners (Last 3 Months)</div>
-                                    <div class="text-sm text-slate-500">Average salary</div>
+                                    <div class="flex gap-2">
+                                        <h3 class="font-semibold">Analytics Metrics Management</h3>
+                                        <span
+                                            class="px-2 py-1 bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-400 text-xs rounded-full">
+                                            <?php echo count($analyticsMetrics); ?> metrics
+                                        </span>
+                                    </div>
+                                    <button onclick="openCreateMetricModal()"
+                                        class="bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] px-3 py-1 rounded-md text-sm hover:opacity-95 transition-opacity">
+                                        Add Metric
+                                    </button>
                                 </div>
                             </div>
                             <div class="overflow-x-auto">
                                 <table class="min-w-full text-sm">
                                     <thead class="bg-[hsl(var(--secondary))]">
                                         <tr>
-                                            <th class="text-left px-3 py-2 font-semibold">Rank</th>
-                                            <th class="text-left px-3 py-2 font-semibold">Employee</th>
-                                            <th class="text-left px-3 py-2 font-semibold">Department</th>
-                                            <th class="text-left px-3 py-2 font-semibold">Avg Salary</th>
+                                            <th class="text-left px-3 py-2 font-semibold">Metric Name</th>
+                                            <th class="text-left px-3 py-2 font-semibold">Type</th>
+                                            <th class="text-left px-3 py-2 font-semibold">Description</th>
+                                            <th class="text-left px-3 py-2 font-semibold">Status</th>
+                                            <th class="text-left px-3 py-2 font-semibold">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <?php foreach ($topEarners as $index => $earner): ?>
+                                        <?php foreach ($analyticsMetrics as $metric): ?>
                                             <tr
-                                                class="border-b border-[hsl(var(--border))] hover:bg-[hsl(var(--secondary))]">
+                                                class="border-t border-[hsl(var(--border))] hover:bg-[hsl(var(--accent))] transition-colors">
+                                                <td class="px-3 py-3 font-medium text-slate-900 dark:text-slate-100">
+                                                    <?php echo htmlspecialchars($metric['metric_name']); ?>
+                                                </td>
+                                                <td class="px-3 py-3 text-slate-600 dark:text-slate-300">
+                                                    <?php echo htmlspecialchars($metric['metric_type']); ?>
+                                                </td>
+                                                <td class="px-3 py-3 text-slate-600 dark:text-slate-300">
+                                                    <?php echo htmlspecialchars(substr($metric['description'], 0, 50)) . (strlen($metric['description']) > 50 ? '...' : ''); ?>
+                                                </td>
                                                 <td class="px-3 py-3">
                                                     <span
-                                                        class="px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded-full">
-                                                        #<?php echo $index + 1; ?>
+                                                        class="px-2 py-1 rounded-full text-xs font-medium <?php echo $metric['is_active'] ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' : 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400'; ?>">
+                                                        <?php echo $metric['is_active'] ? 'Active' : 'Inactive'; ?>
                                                     </span>
                                                 </td>
                                                 <td class="px-3 py-3">
-                                                    <div>
-                                                        <div class="font-medium">
-                                                            <?php echo htmlspecialchars($earner['first_name'] . ' ' . $earner['last_name']); ?>
-                                                        </div>
-                                                        <div class="text-xs text-slate-500">
-                                                            <?php echo htmlspecialchars($earner['employee_number']); ?>
-                                                        </div>
+                                                    <div class="flex items-center gap-1">
+                                                        <button
+                                                            onclick="openEditMetricModal(<?php echo $metric['id']; ?>, '<?php echo htmlspecialchars($metric['metric_name']); ?>', '<?php echo $metric['metric_type']; ?>', '<?php echo htmlspecialchars($metric['description']); ?>', '<?php echo htmlspecialchars($metric['formula']); ?>', <?php echo $metric['is_active']; ?>)"
+                                                            class="p-1 text-slate-400 hover:text-green-600 transition-colors"
+                                                            title="Edit">
+                                                            <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                                viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                                    stroke-width="2"
+                                                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z">
+                                                                </path>
+                                                            </svg>
+                                                        </button>
+                                                        <button
+                                                            onclick="openDeleteMetricModal(<?php echo $metric['id']; ?>, '<?php echo htmlspecialchars($metric['metric_name']); ?>')"
+                                                            class="p-1 text-slate-400 hover:text-red-600 transition-colors"
+                                                            title="Delete">
+                                                            <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                                viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                                    stroke-width="2"
+                                                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
+                                                                </path>
+                                                            </svg>
+                                                        </button>
                                                     </div>
-                                                </td>
-                                                <td class="px-3 py-3">
-                                                    <?php echo htmlspecialchars($earner['department_name'] ?? 'N/A'); ?>
-                                                </td>
-                                                <td class="px-3 py-3">
-                                                    <div class="font-semibold">
-                                                        ₱<?php echo number_format($earner['avg_salary'], 2); ?></div>
                                                 </td>
                                             </tr>
                                         <?php endforeach; ?>
@@ -474,19 +501,85 @@ try {
                             </div>
                         </div>
 
-                        <!-- Benefits Analytics -->
-                        <div class="grid lg:grid-cols-2 gap-4">
-                            <div class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
-                                <div class="text-xs text-slate-500 mb-1">Benefits Cost</div>
-                                <div class="text-2xl font-semibold">₱<?php echo number_format($totalBenefitsCost, 0); ?>
+                        <!-- Report Templates Management -->
+                        <div class="rounded-lg border border-[hsl(var(--border))] overflow-hidden">
+                            <div class="p-4 border-b border-[hsl(var(--border))] bg-[hsl(var(--secondary))]">
+                                <div class="flex flex-col sm:flex-row gap-2 sm:items-center justify-between">
+                                    <div class="flex gap-2">
+                                        <h3 class="font-semibold">Report Templates Management</h3>
+                                        <span
+                                            class="px-2 py-1 bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-400 text-xs rounded-full">
+                                            <?php echo count($reportTemplates); ?> templates
+                                        </span>
+                                    </div>
+                                    <button onclick="openCreateTemplateModal()"
+                                        class="bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] px-3 py-1 rounded-md text-sm hover:opacity-95 transition-opacity">
+                                        Add Template
+                                    </button>
                                 </div>
-                                <div class="text-xs text-green-600 mt-1">Monthly premium</div>
                             </div>
-                            <div class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
-                                <div class="text-xs text-slate-500 mb-1">Active Enrollments</div>
-                                <div class="text-2xl font-semibold"><?php echo number_format($activeEnrollments); ?>
-                                </div>
-                                <div class="text-xs text-blue-600 mt-1">Benefit participants</div>
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full text-sm">
+                                    <thead class="bg-[hsl(var(--secondary))]">
+                                        <tr>
+                                            <th class="text-left px-3 py-2 font-semibold">Template Name</th>
+                                            <th class="text-left px-3 py-2 font-semibold">Type</th>
+                                            <th class="text-left px-3 py-2 font-semibold">Description</th>
+                                            <th class="text-left px-3 py-2 font-semibold">Status</th>
+                                            <th class="text-left px-3 py-2 font-semibold">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php foreach ($reportTemplates as $template): ?>
+                                            <tr
+                                                class="border-t border-[hsl(var(--border))] hover:bg-[hsl(var(--accent))] transition-colors">
+                                                <td class="px-3 py-3 font-medium text-slate-900 dark:text-slate-100">
+                                                    <?php echo htmlspecialchars($template['template_name']); ?>
+                                                </td>
+                                                <td class="px-3 py-3 text-slate-600 dark:text-slate-300">
+                                                    <?php echo htmlspecialchars($template['template_type']); ?>
+                                                </td>
+                                                <td class="px-3 py-3 text-slate-600 dark:text-slate-300">
+                                                    <?php echo htmlspecialchars(substr($template['description'], 0, 50)) . (strlen($template['description']) > 50 ? '...' : ''); ?>
+                                                </td>
+                                                <td class="px-3 py-3">
+                                                    <span
+                                                        class="px-2 py-1 rounded-full text-xs font-medium <?php echo $template['is_active'] ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' : 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400'; ?>">
+                                                        <?php echo $template['is_active'] ? 'Active' : 'Inactive'; ?>
+                                                    </span>
+                                                </td>
+                                                <td class="px-3 py-3">
+                                                    <div class="flex items-center gap-1">
+                                                        <button
+                                                            onclick="openEditTemplateModal(<?php echo $template['id']; ?>, '<?php echo htmlspecialchars($template['template_name']); ?>', '<?php echo htmlspecialchars($template['description']); ?>', '<?php echo $template['template_type']; ?>', '<?php echo htmlspecialchars($template['query']); ?>', <?php echo $template['is_active']; ?>)"
+                                                            class="p-1 text-slate-400 hover:text-green-600 transition-colors"
+                                                            title="Edit">
+                                                            <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                                viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                                    stroke-width="2"
+                                                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z">
+                                                                </path>
+                                                            </svg>
+                                                        </button>
+                                                        <button
+                                                            onclick="openDeleteTemplateModal(<?php echo $template['id']; ?>, '<?php echo htmlspecialchars($template['template_name']); ?>')"
+                                                            class="p-1 text-slate-400 hover:text-red-600 transition-colors"
+                                                            title="Delete">
+                                                            <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                                viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                                    stroke-width="2"
+                                                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
+                                                                </path>
+                                                            </svg>
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
                     </section>
@@ -495,74 +588,395 @@ try {
         </div>
     </div>
 
+    <!-- Create Analytics Metric Modal -->
+    <div id="createMetricModal"
+        class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-[hsl(var(--card))] rounded-lg shadow-xl max-w-md w-full">
+            <div class="p-6 border-b border-[hsl(var(--border))]">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-lg font-semibold">Add Analytics Metric</h3>
+                    <button onclick="closeCreateMetricModal()"
+                        class="text-slate-400 hover:text-slate-600 transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <form method="POST" class="p-6 space-y-4">
+                <input type="hidden" name="action" value="create_metric">
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Metric Name
+                        *</label>
+                    <input type="text" name="metric_name" required
+                        class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Metric Type
+                        *</label>
+                    <select name="metric_type" required
+                        class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]">
+                        <option value="">Select Type</option>
+                        <option value="Turnover Rate">Turnover Rate</option>
+                        <option value="Employee Satisfaction">Employee Satisfaction</option>
+                        <option value="Productivity">Productivity</option>
+                        <option value="Cost per Hire">Cost per Hire</option>
+                        <option value="Time to Fill">Time to Fill</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Description</label>
+                    <textarea name="description" rows="3"
+                        class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]"></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Formula</label>
+                    <input type="text" name="formula" placeholder="e.g., (terminations / average_employees) * 100"
+                        class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]">
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <input type="checkbox" name="is_active" checked class="rounded border-[hsl(var(--border))]">
+                    <span class="text-sm text-slate-700 dark:text-slate-300">Active</span>
+                </div>
+
+                <div class="flex justify-end gap-3 pt-4">
+                    <button type="button" onclick="closeCreateMetricModal()"
+                        class="px-4 py-2 border border-[hsl(var(--border))] text-[hsl(var(--foreground))] rounded-md hover:bg-[hsl(var(--accent))] transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit"
+                        class="px-4 py-2 bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] rounded-md hover:opacity-95 transition-opacity">
+                        Create Metric
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Analytics Metric Modal -->
+    <div id="editMetricModal"
+        class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-[hsl(var(--card))] rounded-lg shadow-xl max-w-md w-full">
+            <div class="p-6 border-b border-[hsl(var(--border))]">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-lg font-semibold">Edit Analytics Metric</h3>
+                    <button onclick="closeEditMetricModal()"
+                        class="text-slate-400 hover:text-slate-600 transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <form method="POST" class="p-6 space-y-4">
+                <input type="hidden" name="action" value="update_metric">
+                <input type="hidden" name="metric_id" id="edit_metric_id">
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Metric Name
+                        *</label>
+                    <input type="text" name="metric_name" id="edit_metric_name" required
+                        class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Metric Type
+                        *</label>
+                    <select name="metric_type" id="edit_metric_type" required
+                        class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]">
+                        <option value="">Select Type</option>
+                        <option value="Turnover Rate">Turnover Rate</option>
+                        <option value="Employee Satisfaction">Employee Satisfaction</option>
+                        <option value="Productivity">Productivity</option>
+                        <option value="Cost per Hire">Cost per Hire</option>
+                        <option value="Time to Fill">Time to Fill</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Description</label>
+                    <textarea name="description" id="edit_description" rows="3"
+                        class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]"></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Formula</label>
+                    <input type="text" name="formula" id="edit_formula"
+                        placeholder="e.g., (terminations / average_employees) * 100"
+                        class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]">
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <input type="checkbox" name="is_active" id="edit_is_active"
+                        class="rounded border-[hsl(var(--border))]">
+                    <span class="text-sm text-slate-700 dark:text-slate-300">Active</span>
+                </div>
+
+                <div class="flex justify-end gap-3 pt-4">
+                    <button type="button" onclick="closeEditMetricModal()"
+                        class="px-4 py-2 border border-[hsl(var(--border))] text-[hsl(var(--foreground))] rounded-md hover:bg-[hsl(var(--accent))] transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit"
+                        class="px-4 py-2 bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] rounded-md hover:opacity-95 transition-opacity">
+                        Update Metric
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Delete Metric Confirmation Modal -->
+    <div id="deleteMetricModal"
+        class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-[hsl(var(--card))] rounded-lg shadow-xl max-w-md w-full">
+            <div class="p-6">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="w-10 h-10 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center">
+                        <svg class="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z">
+                            </path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-semibold">Confirm Deletion</h3>
+                        <p class="text-sm text-slate-500">This action cannot be undone.</p>
+                    </div>
+                </div>
+                <p class="text-sm text-slate-600 dark:text-slate-300 mb-6">
+                    Are you sure you want to delete this analytics metric? This will remove it from all reports and
+                    dashboards.
+                </p>
+                <form method="POST" id="deleteMetricForm">
+                    <input type="hidden" name="action" value="delete_metric">
+                    <input type="hidden" name="metric_id" id="delete_metric_id">
+                    <div class="flex justify-end gap-3">
+                        <button type="button" onclick="closeDeleteMetricModal()"
+                            class="px-4 py-2 border border-[hsl(var(--border))] text-[hsl(var(--foreground))] rounded-md hover:bg-[hsl(var(--accent))] transition-colors">
+                            Cancel
+                        </button>
+                        <button type="submit"
+                            class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors">
+                            Delete Metric
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Report Template Modal -->
+    <div id="createTemplateModal"
+        class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-[hsl(var(--card))] rounded-lg shadow-xl max-w-lg w-full">
+            <div class="p-6 border-b border-[hsl(var(--border))]">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-lg font-semibold">Add Report Template</h3>
+                    <button onclick="closeCreateTemplateModal()"
+                        class="text-slate-400 hover:text-slate-600 transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <form method="POST" class="p-6 space-y-4">
+                <input type="hidden" name="action" value="create_report_template">
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Template Name
+                        *</label>
+                    <input type="text" name="template_name" required
+                        class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Template Type
+                        *</label>
+                    <select name="template_type" required
+                        class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]">
+                        <option value="">Select Type</option>
+                        <option value="Employee Report">Employee Report</option>
+                        <option value="Payroll Report">Payroll Report</option>
+                        <option value="Performance Report">Performance Report</option>
+                        <option value="Benefits Report">Benefits Report</option>
+                        <option value="Analytics Report">Analytics Report</option>
+                        <option value="Custom Report">Custom Report</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Description</label>
+                    <textarea name="description" rows="3"
+                        class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]"></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">SQL Query</label>
+                    <textarea name="query" rows="6" placeholder="SELECT * FROM employees WHERE..."
+                        class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))] font-mono text-sm"></textarea>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <input type="checkbox" name="is_active" checked class="rounded border-[hsl(var(--border))]">
+                    <span class="text-sm text-slate-700 dark:text-slate-300">Active</span>
+                </div>
+
+                <div class="flex justify-end gap-3 pt-4">
+                    <button type="button" onclick="closeCreateTemplateModal()"
+                        class="px-4 py-2 border border-[hsl(var(--border))] text-[hsl(var(--foreground))] rounded-md hover:bg-[hsl(var(--accent))] transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit"
+                        class="px-4 py-2 bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] rounded-md hover:opacity-95 transition-opacity">
+                        Create Template
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Report Template Modal -->
+    <div id="editTemplateModal"
+        class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-[hsl(var(--card))] rounded-lg shadow-xl max-w-lg w-full">
+            <div class="p-6 border-b border-[hsl(var(--border))]">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-lg font-semibold">Edit Report Template</h3>
+                    <button onclick="closeEditTemplateModal()"
+                        class="text-slate-400 hover:text-slate-600 transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <form method="POST" class="p-6 space-y-4">
+                <input type="hidden" name="action" value="update_report_template">
+                <input type="hidden" name="template_id" id="edit_template_id">
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Template Name
+                        *</label>
+                    <input type="text" name="template_name" id="edit_template_name" required
+                        class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Template Type
+                        *</label>
+                    <select name="template_type" id="edit_template_type" required
+                        class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]">
+                        <option value="">Select Type</option>
+                        <option value="Employee Report">Employee Report</option>
+                        <option value="Payroll Report">Payroll Report</option>
+                        <option value="Performance Report">Performance Report</option>
+                        <option value="Benefits Report">Benefits Report</option>
+                        <option value="Analytics Report">Analytics Report</option>
+                        <option value="Custom Report">Custom Report</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Description</label>
+                    <textarea name="description" id="edit_description" rows="3"
+                        class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]"></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">SQL Query</label>
+                    <textarea name="query" id="edit_query" rows="6" placeholder="SELECT * FROM employees WHERE..."
+                        class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))] font-mono text-sm"></textarea>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <input type="checkbox" name="is_active" id="edit_is_active"
+                        class="rounded border-[hsl(var(--border))]">
+                    <span class="text-sm text-slate-700 dark:text-slate-300">Active</span>
+                </div>
+
+                <div class="flex justify-end gap-3 pt-4">
+                    <button type="button" onclick="closeEditTemplateModal()"
+                        class="px-4 py-2 border border-[hsl(var(--border))] text-[hsl(var(--foreground))] rounded-md hover:bg-[hsl(var(--accent))] transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit"
+                        class="px-4 py-2 bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] rounded-md hover:opacity-95 transition-opacity">
+                        Update Template
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Delete Template Confirmation Modal -->
+    <div id="deleteTemplateModal"
+        class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-[hsl(var(--card))] rounded-lg shadow-xl max-w-md w-full">
+            <div class="p-6">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="w-10 h-10 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center">
+                        <svg class="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z">
+                            </path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-semibold">Confirm Deletion</h3>
+                        <p class="text-sm text-slate-500">This action cannot be undone.</p>
+                    </div>
+                </div>
+                <p class="text-sm text-slate-600 dark:text-slate-300 mb-6">
+                    Are you sure you want to delete this report template? This will remove it from the system
+                    permanently.
+                </p>
+                <form method="POST" id="deleteTemplateForm">
+                    <input type="hidden" name="action" value="delete_report_template">
+                    <input type="hidden" name="template_id" id="delete_template_id">
+                    <div class="flex justify-end gap-3">
+                        <button type="button" onclick="closeDeleteTemplateModal()"
+                            class="px-4 py-2 border border-[hsl(var(--border))] text-[hsl(var(--foreground))] rounded-md hover:bg-[hsl(var(--accent))] transition-colors">
+                            Cancel
+                        </button>
+                        <button type="submit"
+                            class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors">
+                            Delete Template
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <script src="/HR4_COMPEN&INTELLI/shared/scripts.js"></script>
     <script>
-        // Department Chart
-        const departmentCtx = document.getElementById('departmentChart').getContext('2d');
-        new Chart(departmentCtx, {
-            type: 'doughnut',
+        // Department Headcount Chart
+        const headcountCtx = document.getElementById('headcountChart').getContext('2d');
+        new Chart(headcountCtx, {
+            type: 'bar',
             data: {
-                labels: [<?php echo implode(',', array_map(function ($dept) {
-                    return '"' . htmlspecialchars($dept['department_name']) . '"';
-                }, $departmentStats)); ?>],
+                labels: [<?php echo "'" . implode("','", array_column($departments, 'department_name')) . "'"; ?>],
                 datasets: [{
-                    data: [<?php echo implode(',', array_column($departmentStats, 'employee_count')); ?>],
-                    backgroundColor: [
-                        '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6',
-                        '#06B6D4', '#84CC16', '#F97316', '#EC4899', '#6B7280'
-                    ]
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false
-            }
-        });
-
-        // Gender Chart
-        const genderCtx = document.getElementById('genderChart').getContext('2d');
-        new Chart(genderCtx, {
-            type: 'pie',
-            data: {
-                labels: [<?php echo implode(',', array_map(function ($gender) {
-                    return '"' . htmlspecialchars($gender['gender']) . '"';
-                }, $genderStats)); ?>],
-                datasets: [{
-                    data: [<?php echo implode(',', array_column($genderStats, 'count')); ?>],
-                    backgroundColor: ['#3B82F6', '#EC4899', '#10B981']
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false
-            }
-        });
-
-        // Trends Chart
-        const trendsCtx = document.getElementById('trendsChart').getContext('2d');
-        new Chart(trendsCtx, {
-            type: 'line',
-            data: {
-                labels: [<?php echo implode(',', array_map(function ($trend) {
-                    return '"' . $trend['month'] . '"';
-                }, array_reverse($monthlyTrends))); ?>],
-                datasets: [{
-                    label: 'Total Payroll',
-                    data: [<?php echo implode(',', array_map(function ($trend) {
-                        return $trend['total_payroll'] ?? 0;
-                    }, array_reverse($monthlyTrends))); ?>],
-                    borderColor: '#3B82F6',
-                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                    tension: 0.4
-                }, {
-                    label: 'Average Salary',
-                    data: [<?php echo implode(',', array_map(function ($trend) {
-                        return $trend['avg_payroll'] ?? 0;
-                    }, array_reverse($monthlyTrends))); ?>],
-                    borderColor: '#10B981',
-                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                    tension: 0.4,
-                    yAxisID: 'y1'
+                    label: 'Headcount',
+                    data: [<?php echo implode(',', array_column($departments, 'employee_count')); ?>],
+                    backgroundColor: 'rgba(59, 130, 246, 0.5)',
+                    borderColor: 'rgba(59, 130, 246, 1)',
+                    borderWidth: 1
                 }]
             },
             options: {
@@ -570,95 +984,122 @@ try {
                 maintainAspectRatio: false,
                 scales: {
                     y: {
-                        type: 'linear',
-                        display: true,
-                        position: 'left',
-                    },
-                    y1: {
-                        type: 'linear',
-                        display: true,
-                        position: 'right',
-                        grid: {
-                            drawOnChartArea: false,
-                        },
+                        beginAtZero: true
                     }
                 }
             }
         });
 
-        function exportAnalytics() {
-            alert('Export analytics functionality coming soon');
-        }
-
-        function generateCustomReport() {
-            alert('Custom report functionality coming soon');
-        }
-
-        function refreshData() {
-            location.reload();
-        }
-
-        // Advanced analytics functions
-        function openAdvancedAnalytics() {
-            alert('Advanced analytics - Access predictive analytics, forecasting, and advanced reporting features');
-        }
-
-        function openRealTimeDashboard() {
-            alert('Real-time dashboard - View live updates and real-time metrics');
-        }
-
-        function openPredictiveAnalytics() {
-            alert('Predictive analytics - Forecast trends, predict turnover, and analyze future workforce needs');
-        }
-
-        function openCustomReports() {
-            alert('Custom reports - Create custom analytics reports with specific metrics and visualizations');
-        }
-
-        // Chart interaction functions
-        function filterByDepartment(department) {
-            alert(`Filtering analytics by department: ${department}`);
-        }
-
-        function filterByTimeRange(range) {
-            alert(`Filtering analytics by time range: ${range}`);
-        }
-
-        function exportChart(chartId) {
-            alert(`Exporting chart: ${chartId} - This would save the chart as an image`);
-        }
-
-        // Auto-refresh functionality
-        let autoRefreshInterval;
-
-        function toggleAutoRefresh() {
-            const button = document.getElementById('autoRefreshBtn');
-            if (autoRefreshInterval) {
-                clearInterval(autoRefreshInterval);
-                autoRefreshInterval = null;
-                button.textContent = 'Enable Auto Refresh';
-                button.classList.remove('bg-green-600');
-                button.classList.add('bg-gray-600');
-            } else {
-                autoRefreshInterval = setInterval(refreshData, 30000); // Refresh every 30 seconds
-                button.textContent = 'Disable Auto Refresh';
-                button.classList.remove('bg-gray-600');
-                button.classList.add('bg-green-600');
+        // Salary Distribution Chart
+        const salaryCtx = document.getElementById('salaryChart').getContext('2d');
+        new Chart(salaryCtx, {
+            type: 'doughnut',
+            data: {
+                labels: [<?php echo "'" . implode("','", array_keys($salaryRanges)) . "'"; ?>],
+                datasets: [{
+                    data: [<?php echo implode(',', array_values($salaryRanges)); ?>],
+                    backgroundColor: [
+                        'rgba(239, 68, 68, 0.5)',
+                        'rgba(245, 158, 11, 0.5)',
+                        'rgba(34, 197, 94, 0.5)',
+                        'rgba(59, 130, 246, 0.5)',
+                        'rgba(147, 51, 234, 0.5)'
+                    ],
+                    borderColor: [
+                        'rgba(239, 68, 68, 1)',
+                        'rgba(245, 158, 11, 1)',
+                        'rgba(34, 197, 94, 1)',
+                        'rgba(59, 130, 246, 1)',
+                        'rgba(147, 51, 234, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
             }
+        });
+
+        // Analytics Metrics Management
+        function openCreateMetricModal() {
+            document.getElementById('createMetricModal').classList.remove('hidden');
         }
 
-        // Initialize tooltips and interactions
-        document.addEventListener('DOMContentLoaded', function () {
-            // Add hover effects to metric cards
-            const metricCards = document.querySelectorAll('.rounded-lg.border.border-\\[hsl\\(var\\(--border\\)\\)\\]');
-            metricCards.forEach(card => {
-                card.addEventListener('mouseenter', function () {
-                    this.classList.add('shadow-lg', 'transform', 'scale-105');
-                });
-                card.addEventListener('mouseleave', function () {
-                    this.classList.remove('shadow-lg', 'transform', 'scale-105');
-                });
-            });
+        function closeCreateMetricModal() {
+            document.getElementById('createMetricModal').classList.add('hidden');
+        }
+
+        function openEditMetricModal(metricId, metricName, metricType, description, formula, isActive) {
+            document.getElementById('edit_metric_id').value = metricId;
+            document.getElementById('edit_metric_name').value = metricName;
+            document.getElementById('edit_metric_type').value = metricType;
+            document.getElementById('edit_description').value = description;
+            document.getElementById('edit_formula').value = formula;
+            document.getElementById('edit_is_active').checked = isActive == 1;
+            document.getElementById('editMetricModal').classList.remove('hidden');
+        }
+
+        function closeEditMetricModal() {
+            document.getElementById('editMetricModal').classList.add('hidden');
+        }
+
+        function openDeleteMetricModal(metricId, metricName) {
+            document.getElementById('delete_metric_id').value = metricId;
+            document.getElementById('deleteMetricModal').classList.remove('hidden');
+        }
+
+        function closeDeleteMetricModal() {
+            document.getElementById('deleteMetricModal').classList.add('hidden');
+        }
+
+        // Report Templates Management
+        function openCreateTemplateModal() {
+            document.getElementById('createTemplateModal').classList.remove('hidden');
+        }
+
+        function closeCreateTemplateModal() {
+            document.getElementById('createTemplateModal').classList.add('hidden');
+        }
+
+        function openEditTemplateModal(templateId, templateName, description, templateType, query, isActive) {
+            document.getElementById('edit_template_id').value = templateId;
+            document.getElementById('edit_template_name').value = templateName;
+            document.getElementById('edit_description').value = description;
+            document.getElementById('edit_template_type').value = templateType;
+            document.getElementById('edit_query').value = query;
+            document.getElementById('edit_is_active').checked = isActive == 1;
+            document.getElementById('editTemplateModal').classList.remove('hidden');
+        }
+
+        function closeEditTemplateModal() {
+            document.getElementById('editTemplateModal').classList.add('hidden');
+        }
+
+        function openDeleteTemplateModal(templateId, templateName) {
+            document.getElementById('delete_template_id').value = templateId;
+            document.getElementById('deleteTemplateModal').classList.remove('hidden');
+        }
+
+        function closeDeleteTemplateModal() {
+            document.getElementById('deleteTemplateModal').classList.add('hidden');
+        }
+
+        // Close modals when clicking outside
+        document.addEventListener('click', function (e) {
+            if (e.target.classList.contains('fixed')) {
+                closeCreateMetricModal();
+                closeEditMetricModal();
+                closeDeleteMetricModal();
+                closeCreateTemplateModal();
+                closeEditTemplateModal();
+                closeDeleteTemplateModal();
+            }
         });
     </script>
 </body>

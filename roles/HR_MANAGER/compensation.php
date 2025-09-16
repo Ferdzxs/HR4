@@ -1,128 +1,161 @@
 <?php
-// HR Manager Compensation Planning Page
+// HR Manager Compensation Page
 include_once __DIR__ . '/../../shared/header.php';
 include_once __DIR__ . '/../../shared/sidebar.php';
+include_once __DIR__ . '/../../shared/database_helper.php';
 include_once __DIR__ . '/../../routing/rbac.php';
-include_once __DIR__ . '/../../config/database.php';
 
 $activeId = 'compensation';
 $sidebarItems = $SIDEBAR_ITEMS[$user['role']] ?? [];
 
-// Handle form submissions
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($_POST['action'])) {
-        switch ($_POST['action']) {
-            case 'add_salary_component':
-                try {
-                    $stmt = $pdo->prepare("INSERT INTO salary_components (employee_id, component_type, amount, effective_date) VALUES (?, ?, ?, ?)");
-                    $stmt->execute([
-                        $_POST['employee_id'],
-                        $_POST['component_type'],
-                        $_POST['amount'],
-                        $_POST['effective_date']
-                    ]);
-                    $success = "Salary component added successfully!";
-                } catch (PDOException $e) {
-                    $error = "Error adding salary component: " . $e->getMessage();
-                }
-                break;
+// Initialize database helper
+$dbHelper = new DatabaseHelper();
 
-            case 'update_salary_grade':
-                try {
-                    $stmt = $pdo->prepare("UPDATE salary_grades SET min_salary = ?, max_salary = ? WHERE id = ?");
-                    $stmt->execute([
-                        $_POST['min_salary'],
-                        $_POST['max_salary'],
-                        $_POST['grade_id']
-                    ]);
-                    $success = "Salary grade updated successfully!";
-                } catch (PDOException $e) {
-                    $error = "Error updating salary grade: " . $e->getMessage();
-                }
-                break;
+// Handle CRUD operations
+$message = '';
+$messageType = '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $action = $_POST['action'] ?? '';
+
+    if ($action === 'create_salary_grade') {
+        try {
+            $gradeLevel = $_POST['grade_level'] ?? '';
+            $minSalary = floatval($_POST['min_salary'] ?? 0);
+            $maxSalary = floatval($_POST['max_salary'] ?? 0);
+
+            $dbHelper->query("
+                INSERT INTO salary_grades (grade_level, min_salary, max_salary) 
+                VALUES (?, ?, ?)
+            ", [$gradeLevel, $minSalary, $maxSalary]);
+
+            $message = 'Salary grade created successfully!';
+            $messageType = 'success';
+        } catch (Exception $e) {
+            $message = 'Error creating salary grade: ' . $e->getMessage();
+            $messageType = 'error';
+        }
+    } elseif ($action === 'update_salary_grade') {
+        try {
+            $gradeId = intval($_POST['grade_id'] ?? 0);
+            $gradeLevel = $_POST['grade_level'] ?? '';
+            $minSalary = floatval($_POST['min_salary'] ?? 0);
+            $maxSalary = floatval($_POST['max_salary'] ?? 0);
+
+            $dbHelper->query("
+                UPDATE salary_grades 
+                SET grade_level = ?, min_salary = ?, max_salary = ?
+                WHERE id = ?
+            ", [$gradeLevel, $minSalary, $maxSalary, $gradeId]);
+
+            $message = 'Salary grade updated successfully!';
+            $messageType = 'success';
+        } catch (Exception $e) {
+            $message = 'Error updating salary grade: ' . $e->getMessage();
+            $messageType = 'error';
+        }
+    } elseif ($action === 'delete_salary_grade') {
+        try {
+            $gradeId = intval($_POST['grade_id'] ?? 0);
+            $dbHelper->query("DELETE FROM salary_grades WHERE id = ?", [$gradeId]);
+            $message = 'Salary grade deleted successfully!';
+            $messageType = 'success';
+        } catch (Exception $e) {
+            $message = 'Error deleting salary grade: ' . $e->getMessage();
+            $messageType = 'error';
+        }
+    } elseif ($action === 'create_position') {
+        try {
+            $positionTitle = $_POST['position_title'] ?? '';
+            $salaryGradeId = intval($_POST['salary_grade_id'] ?? 0);
+            $jobDescription = $_POST['job_description'] ?? '';
+            $reportsToPositionId = intval($_POST['reports_to_position_id'] ?? 0);
+
+            $dbHelper->query("
+                INSERT INTO positions (position_title, salary_grade_id, job_description, reports_to_position_id) 
+                VALUES (?, ?, ?, ?)
+            ", [$positionTitle, $salaryGradeId, $jobDescription, $reportsToPositionId ?: null]);
+
+            $message = 'Position created successfully!';
+            $messageType = 'success';
+        } catch (Exception $e) {
+            $message = 'Error creating position: ' . $e->getMessage();
+            $messageType = 'error';
+        }
+    } elseif ($action === 'update_position') {
+        try {
+            $positionId = intval($_POST['position_id'] ?? 0);
+            $positionTitle = $_POST['position_title'] ?? '';
+            $salaryGradeId = intval($_POST['salary_grade_id'] ?? 0);
+            $jobDescription = $_POST['job_description'] ?? '';
+            $reportsToPositionId = intval($_POST['reports_to_position_id'] ?? 0);
+
+            $dbHelper->query("
+                UPDATE positions 
+                SET position_title = ?, salary_grade_id = ?, job_description = ?, reports_to_position_id = ?
+                WHERE id = ?
+            ", [$positionTitle, $salaryGradeId, $jobDescription, $reportsToPositionId ?: null, $positionId]);
+
+            $message = 'Position updated successfully!';
+            $messageType = 'success';
+        } catch (Exception $e) {
+            $message = 'Error updating position: ' . $e->getMessage();
+            $messageType = 'error';
+        }
+    } elseif ($action === 'delete_position') {
+        try {
+            $positionId = intval($_POST['position_id'] ?? 0);
+            $dbHelper->query("DELETE FROM positions WHERE id = ?", [$positionId]);
+            $message = 'Position deleted successfully!';
+            $messageType = 'success';
+        } catch (Exception $e) {
+            $message = 'Error deleting position: ' . $e->getMessage();
+            $messageType = 'error';
         }
     }
 }
 
-// Fetch compensation data
-try {
-    // Salary grades
-    $stmt = $pdo->query("SELECT * FROM salary_grades ORDER BY grade_level");
-    $salaryGrades = $stmt->fetchAll();
+// Get compensation data
+$compensationData = $dbHelper->getCompensationData();
+$departments = $dbHelper->getDepartments();
+$salaryGrades = $dbHelper->fetchAll("SELECT * FROM salary_grades ORDER BY grade_level");
+$budgetUtilization = $dbHelper->getDepartmentBudgetUtilization();
 
-    // Positions with salary grades
-    $stmt = $pdo->query("SELECT p.*, sg.grade_level, sg.min_salary, sg.max_salary, COUNT(e.id) as employee_count
-                        FROM positions p
-                        LEFT JOIN salary_grades sg ON p.salary_grade_id = sg.id
-                        LEFT JOIN employees e ON p.id = e.position_id AND e.status = 'Active'
-                        GROUP BY p.id
-                        ORDER BY sg.grade_level, p.position_title");
-    $positions = $stmt->fetchAll();
+// Get positions for CRUD operations
+$positions = $dbHelper->fetchAll("
+    SELECT p.*, sg.grade_level, sg.min_salary, sg.max_salary,
+           p2.position_title as reports_to_title
+    FROM positions p
+    JOIN salary_grades sg ON p.salary_grade_id = sg.id
+    LEFT JOIN positions p2 ON p.reports_to_position_id = p2.id
+    ORDER BY p.position_title
+");
 
-    // Recent salary components
-    $stmt = $pdo->query("SELECT sc.*, e.first_name, e.last_name, e.employee_number, d.department_name
-                        FROM salary_components sc
-                        JOIN employees e ON sc.employee_id = e.id
-                        LEFT JOIN departments d ON e.department_id = d.id
-                        ORDER BY sc.effective_date DESC, sc.created_at DESC
-                        LIMIT 20");
-    $recentComponents = $stmt->fetchAll();
+// Calculate compensation metrics
+$totalBudget = array_sum(array_column($departments, 'budget_allocation'));
+$totalSalary = array_sum(array_column($compensationData, 'basic_salary'));
+$budgetUtilizationPercent = $totalBudget > 0 ? ($totalSalary / $totalBudget) * 100 : 0;
+$avgSalary = count($compensationData) > 0 ? array_sum(array_column($compensationData, 'basic_salary')) / count($compensationData) : 0;
 
-    // Department budget allocation
-    $stmt = $pdo->query("SELECT d.department_name, d.budget_allocation, 
-                        COUNT(e.id) as employee_count,
-                        SUM(sg.min_salary + sg.max_salary) / 2 as total_salary_budget,
-                        AVG(sg.min_salary + sg.max_salary) / 2 as avg_salary
-                        FROM departments d
-                        LEFT JOIN employees e ON d.id = e.department_id AND e.status = 'Active'
-                        LEFT JOIN positions p ON e.position_id = p.id
-                        LEFT JOIN salary_grades sg ON p.salary_grade_id = sg.id
-                        GROUP BY d.id
-                        ORDER BY d.department_name");
-    $departmentBudgets = $stmt->fetchAll();
-
-    // Equity tracking (simulated data)
-    $equityData = $pdo->query("SELECT 
-                              e.first_name, e.last_name, e.employee_number, d.department_name,
-                              p.position_title, sg.grade_level,
-                              (sg.min_salary + sg.max_salary) / 2 as current_salary,
-                              (sg.min_salary + sg.max_salary) / 2 * 0.1 as equity_value
-                              FROM employees e
-                              LEFT JOIN departments d ON e.department_id = d.id
-                              LEFT JOIN positions p ON e.position_id = p.id
-                              LEFT JOIN salary_grades sg ON p.salary_grade_id = sg.id
-                              WHERE e.status = 'Active'
-                              ORDER BY equity_value DESC
-                              LIMIT 20")->fetchAll();
-
-    // Compensation statistics
-    $totalSalaryBudget = $pdo->query("SELECT SUM(sg.max_salary * COUNT(e.id)) FROM salary_grades sg 
-                                      LEFT JOIN positions p ON sg.id = p.salary_grade_id 
-                                      LEFT JOIN employees e ON p.id = e.position_id AND e.status = 'Active'
-                                      GROUP BY sg.id")->fetchColumn();
-
-    $averageSalary = $pdo->query("SELECT AVG(sg.min_salary + sg.max_salary) / 2 FROM salary_grades sg 
-                                 JOIN positions p ON sg.id = p.salary_grade_id 
-                                 JOIN employees e ON p.id = e.position_id AND e.status = 'Active'")->fetchColumn();
-
-    $totalComponents = $pdo->query("SELECT COUNT(*) FROM salary_components")->fetchColumn();
-
-    $pendingApprovals = $pdo->query("SELECT COUNT(*) FROM salary_components WHERE effective_date > CURDATE()")->fetchColumn();
-
-    // Budget utilization
-    $totalBudgetAllocated = array_sum(array_column($departmentBudgets, 'budget_allocation'));
-    $totalSalarySpent = array_sum(array_column($departmentBudgets, 'total_salary_budget'));
-    $budgetUtilization = $totalBudgetAllocated > 0 ? ($totalSalarySpent / $totalBudgetAllocated) * 100 : 0;
-
-} catch (PDOException $e) {
-    $salaryGrades = [];
-    $positions = [];
-    $recentComponents = [];
-    $departmentBudgets = [];
-    $equityData = [];
-    $totalSalaryBudget = $averageSalary = $totalComponents = $pendingApprovals = 0;
-    $totalBudgetAllocated = $totalSalarySpent = $budgetUtilization = 0;
+// Get salary distribution by grade
+$salaryDistribution = [];
+foreach ($salaryGrades as $grade) {
+    $count = count(array_filter($compensationData, function ($emp) use ($grade) {
+        return $emp['grade_level'] === $grade['grade_level'];
+    }));
+    $salaryDistribution[$grade['grade_level']] = $count;
 }
+
+// Get pending approvals (using audit logs as proxy)
+$pendingApprovals = $dbHelper->fetchAll("
+    SELECT COUNT(*) as count 
+    FROM audit_logs 
+    WHERE action_type IN ('salary_increase', 'promotion', 'bonus_approval') 
+    AND timestamp >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+")[0]['count'] ?? 0;
+
+// Get recent compensation activities
+$recentActivities = $dbHelper->getRecentActivities(10);
 ?>
 
 <!DOCTYPE html>
@@ -131,7 +164,7 @@ try {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HR4 - Compensation Planning</title>
+    <title>HR4 - Compensation</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="/HR4_COMPEN&INTELLI/shared/styles.css">
 </head>
@@ -144,86 +177,143 @@ try {
                 class="flex-1 grid <?php echo $sidebarCollapsed ? 'lg:grid-cols-[72px_1fr]' : 'lg:grid-cols-[260px_1fr]'; ?>">
                 <?php echo renderSidebar($sidebarItems, $activeId, $sidebarCollapsed); ?>
                 <main class="overflow-y-auto">
+
                     <section class="p-4 lg:p-6 space-y-4">
                         <div>
                             <h1 class="text-lg font-semibold">Compensation Planning</h1>
                             <p class="text-xs text-slate-500 mt-1">Budgets, increases, equity, and approvals</p>
                         </div>
 
-                        <?php if (isset($success)): ?>
-                            <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
-                                <?php echo htmlspecialchars($success); ?>
+                        <!-- Message Display -->
+                        <?php if ($message): ?>
+                            <div
+                                class="rounded-lg border border-[hsl(var(--border))] p-4 <?php echo $messageType === 'success' ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'; ?>">
+                                <div class="flex items-center gap-2">
+                                    <svg class="w-5 h-5 <?php echo $messageType === 'success' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'; ?>"
+                                        fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <?php if ($messageType === 'success'): ?>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M5 13l4 4L19 7"></path>
+                                        <?php else: ?>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M6 18L18 6M6 6l12 12"></path>
+                                        <?php endif; ?>
+                                    </svg>
+                                    <span
+                                        class="text-sm font-medium <?php echo $messageType === 'success' ? 'text-green-800 dark:text-green-200' : 'text-red-800 dark:text-red-200'; ?>">
+                                        <?php echo htmlspecialchars($message); ?>
+                                    </span>
+                                </div>
                             </div>
                         <?php endif; ?>
-
-                        <?php if (isset($error)): ?>
-                            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-                                <?php echo htmlspecialchars($error); ?>
-                            </div>
-                        <?php endif; ?>
-
-                        <!-- Quick Actions -->
-                        <div class="flex flex-wrap gap-2">
-                            <button onclick="openAddComponentModal()"
-                                class="bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] shadow hover:opacity-95 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-9 px-3">
-                                Add Salary Component
-                            </button>
-                            <button onclick="openBudgetPlanning()"
-                                class="bg-purple-600 text-white shadow hover:opacity-95 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-9 px-3">
-                                Budget Planning
-                            </button>
-                            <button onclick="openEquityManagement()"
-                                class="bg-green-600 text-white shadow hover:opacity-95 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-9 px-3">
-                                Equity Management
-                            </button>
-                            <button onclick="openCompensationAnalysis()"
-                                class="bg-blue-600 text-white shadow hover:opacity-95 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-9 px-3">
-                                Analysis
-                            </button>
-                            <button onclick="openSalaryReviewModal()"
-                                class="bg-orange-600 text-white shadow hover:opacity-95 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-9 px-3">
-                                Salary Review
-                            </button>
-                            <button onclick="exportCompensation()"
-                                class="bg-slate-600 text-white shadow hover:opacity-95 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-9 px-3">
-                                Export Data
-                            </button>
-                        </div>
-
-                        <!-- Compensation Statistics -->
+                        <!-- Compensation Stats -->
                         <div class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">
-                            <div class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
-                                <div class="text-xs text-slate-500 mb-1">Total Salary Budget</div>
-                                <div class="text-2xl font-semibold">₱<?php echo number_format($totalSalaryBudget, 0); ?>
+                            <div
+                                class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4 hover:shadow-md transition-shadow">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <div class="text-xs text-slate-500 mb-1">Total Budget</div>
+                                        <div class="text-2xl font-semibold">
+                                            ₱<?php echo number_format($totalBudget, 0); ?></div>
+                                        <div class="text-xs text-slate-500">All departments</div>
+                                    </div>
+                                    <div
+                                        class="w-10 h-10 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex items-center justify-center">
+                                        <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none"
+                                            stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1">
+                                            </path>
+                                        </svg>
+                                    </div>
                                 </div>
-                                <div class="text-xs text-blue-600 mt-1">Annual budget</div>
                             </div>
-                            <div class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
-                                <div class="text-xs text-slate-500 mb-1">Average Salary</div>
-                                <div class="text-2xl font-semibold">₱<?php echo number_format($averageSalary, 0); ?>
+                            <div
+                                class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4 hover:shadow-md transition-shadow">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <div class="text-xs text-slate-500 mb-1">Budget Utilization</div>
+                                        <div class="text-2xl font-semibold">
+                                            <?php echo number_format($budgetUtilizationPercent, 1); ?>%
+                                        </div>
+                                        <div class="text-xs text-slate-500">
+                                            ₱<?php echo number_format($totalSalary, 0); ?> used</div>
+                                    </div>
+                                    <div
+                                        class="w-10 h-10 bg-green-100 dark:bg-green-900/20 rounded-lg flex items-center justify-center">
+                                        <svg class="w-5 h-5 text-green-600 dark:text-green-400" fill="none"
+                                            stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z">
+                                            </path>
+                                        </svg>
+                                    </div>
                                 </div>
-                                <div class="text-xs text-green-600 mt-1">Per employee</div>
                             </div>
-                            <div class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
-                                <div class="text-xs text-slate-500 mb-1">Salary Components</div>
-                                <div class="text-2xl font-semibold"><?php echo number_format($totalComponents); ?></div>
-                                <div class="text-xs text-purple-600 mt-1">Active components</div>
-                            </div>
-                            <div class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
-                                <div class="text-xs text-slate-500 mb-1">Pending Approvals</div>
-                                <div class="text-2xl font-semibold"><?php echo number_format($pendingApprovals); ?>
+                            <div
+                                class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4 hover:shadow-md transition-shadow">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <div class="text-xs text-slate-500 mb-1">Pending Approvals</div>
+                                        <div class="text-2xl font-semibold"><?php echo $pendingApprovals; ?></div>
+                                        <div class="text-xs text-slate-500">Last 30 days</div>
+                                    </div>
+                                    <div
+                                        class="w-10 h-10 bg-orange-100 dark:bg-orange-900/20 rounded-lg flex items-center justify-center">
+                                        <svg class="w-5 h-5 text-orange-600 dark:text-orange-400" fill="none"
+                                            stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                    </div>
                                 </div>
-                                <div class="text-xs text-orange-600 mt-1">Awaiting review</div>
+                            </div>
+                            <div
+                                class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4 hover:shadow-md transition-shadow">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <div class="text-xs text-slate-500 mb-1">Average Salary</div>
+                                        <div class="text-2xl font-semibold">₱<?php echo number_format($avgSalary, 0); ?>
+                                        </div>
+                                        <div class="text-xs text-slate-500">Across all employees</div>
+                                    </div>
+                                    <div
+                                        class="w-10 h-10 bg-purple-100 dark:bg-purple-900/20 rounded-lg flex items-center justify-center">
+                                        <svg class="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none"
+                                            stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                                        </svg>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-
-                        <!-- Budget Management -->
+                        <!-- Department Budget Analysis -->
                         <div class="rounded-lg border border-[hsl(var(--border))] overflow-hidden">
-                            <div class="p-3 border-b border-[hsl(var(--border))] bg-[hsl(var(--secondary))]">
+                            <div class="p-4 border-b border-[hsl(var(--border))] bg-[hsl(var(--secondary))]">
                                 <div class="flex flex-col sm:flex-row gap-2 sm:items-center justify-between">
-                                    <div class="font-semibold">Department Budget Management</div>
-                                    <div class="text-sm text-slate-500">Budget utilization:
-                                        <?php echo number_format($budgetUtilization, 1); ?>%</div>
+                                    <div class="flex gap-2">
+                                        <h3 class="font-semibold">Department Budget Analysis</h3>
+                                        <span
+                                            class="px-2 py-1 bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-400 text-xs rounded-full">
+                                            <?php echo count($departments); ?> departments
+                                        </span>
+                                    </div>
+                                    <div class="flex gap-2">
+                                        <select
+                                            class="px-3 py-1 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] text-sm">
+                                            <option>All Departments</option>
+                                            <?php foreach ($departments as $dept): ?>
+                                                <option value="<?php echo $dept['id']; ?>">
+                                                    <?php echo htmlspecialchars($dept['department_name']); ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                        <button
+                                            class="bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] px-3 py-1 rounded-md text-sm hover:opacity-95 transition-opacity">
+                                            Export Report
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                             <div class="overflow-x-auto">
@@ -231,137 +321,167 @@ try {
                                     <thead class="bg-[hsl(var(--secondary))]">
                                         <tr>
                                             <th class="text-left px-3 py-2 font-semibold">Department</th>
-                                            <th class="text-left px-3 py-2 font-semibold">Allocated Budget</th>
-                                            <th class="text-left px-3 py-2 font-semibold">Salary Spent</th>
-                                            <th class="text-left px-3 py-2 font-semibold">Remaining</th>
+                                            <th class="text-left px-3 py-2 font-semibold">Budget Allocation</th>
+                                            <th class="text-left px-3 py-2 font-semibold">Current Salary</th>
                                             <th class="text-left px-3 py-2 font-semibold">Utilization</th>
-                                            <th class="text-left px-3 py-2 font-semibold">Actions</th>
+                                            <th class="text-left px-3 py-2 font-semibold">Remaining</th>
+                                            <th class="text-left px-3 py-2 font-semibold">Status</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <?php foreach ($departmentBudgets as $budget): ?>
-                                            <?php
-                                            $remaining = $budget['budget_allocation'] - $budget['total_salary_budget'];
-                                            $utilization = $budget['budget_allocation'] > 0 ? ($budget['total_salary_budget'] / $budget['budget_allocation']) * 100 : 0;
-                                            ?>
-                                            <tr
-                                                class="border-b border-[hsl(var(--border))] hover:bg-[hsl(var(--secondary))]">
-                                                <td class="px-3 py-3">
-                                                    <div class="font-medium">
-                                                        <?php echo htmlspecialchars($budget['department_name']); ?></div>
-                                                    <div class="text-xs text-gray-500">
-                                                        <?php echo $budget['employee_count']; ?> employees</div>
-                                                </td>
-                                                <td class="px-3 py-3">
-                                                    ₱<?php echo number_format($budget['budget_allocation'], 0); ?></td>
-                                                <td class="px-3 py-3">
-                                                    ₱<?php echo number_format($budget['total_salary_budget'], 0); ?></td>
-                                                <td class="px-3 py-3">
-                                                    <span
-                                                        class="<?php echo $remaining >= 0 ? 'text-green-600' : 'text-red-600'; ?>">
-                                                        ₱<?php echo number_format($remaining, 0); ?>
-                                                    </span>
-                                                </td>
-                                                <td class="px-3 py-3">
-                                                    <div class="flex items-center space-x-2">
-                                                        <div class="w-16 bg-gray-200 rounded-full h-2">
-                                                            <div class="bg-blue-600 h-2 rounded-full"
-                                                                style="width: <?php echo min($utilization, 100); ?>%"></div>
-                                                        </div>
-                                                        <span
-                                                            class="text-xs"><?php echo number_format($utilization, 1); ?>%</span>
-                                                    </div>
-                                                </td>
-                                                <td class="px-3 py-3">
-                                                    <div class="flex gap-1">
-                                                        <button
-                                                            onclick="adjustBudget('<?php echo $budget['department_name']; ?>')"
-                                                            class="text-blue-600 hover:text-blue-800 text-xs">Adjust</button>
-                                                        <button
-                                                            onclick="viewBudgetDetails('<?php echo $budget['department_name']; ?>')"
-                                                            class="text-green-600 hover:text-green-800 text-xs">Details</button>
+                                        <?php if (empty($budgetUtilization)): ?>
+                                            <tr>
+                                                <td class="px-3 py-6 text-center text-slate-500" colspan="6">
+                                                    <div class="text-center py-10">
+                                                        <div class="text-sm font-medium">No budget data</div>
+                                                        <div class="text-xs text-slate-500 mt-1">Budget allocation data not
+                                                            available.</div>
                                                     </div>
                                                 </td>
                                             </tr>
-                                        <?php endforeach; ?>
+                                        <?php else: ?>
+                                            <?php foreach ($budgetUtilization as $dept): ?>
+                                                <tr
+                                                    class="border-t border-[hsl(var(--border))] hover:bg-[hsl(var(--accent))] transition-colors">
+                                                    <td class="px-3 py-3">
+                                                        <div class="font-medium text-slate-900 dark:text-slate-100">
+                                                            <?php echo htmlspecialchars($dept['department_name']); ?>
+                                                        </div>
+                                                        <div class="text-xs text-slate-500">
+                                                            <?php echo $dept['employee_count']; ?> employees
+                                                        </div>
+                                                    </td>
+                                                    <td class="px-3 py-3 text-slate-600 dark:text-slate-300">
+                                                        ₱<?php echo number_format($dept['budget_allocation'], 0); ?>
+                                                    </td>
+                                                    <td class="px-3 py-3 text-slate-600 dark:text-slate-300">
+                                                        ₱<?php echo number_format($dept['total_salary'] ?? 0, 0); ?>
+                                                    </td>
+                                                    <td class="px-3 py-3">
+                                                        <div class="flex items-center gap-2">
+                                                            <div class="w-16 bg-slate-200 dark:bg-slate-700 rounded-full h-2">
+                                                                <div class="bg-blue-600 h-2 rounded-full"
+                                                                    style="width: <?php echo min(100, $dept['utilization_percentage'] ?? 0); ?>%">
+                                                                </div>
+                                                            </div>
+                                                            <span class="text-xs font-medium">
+                                                                <?php echo number_format($dept['utilization_percentage'] ?? 0, 1); ?>%
+                                                            </span>
+                                                        </div>
+                                                    </td>
+                                                    <td class="px-3 py-3 text-slate-600 dark:text-slate-300">
+                                                        ₱<?php echo number_format(($dept['budget_allocation'] ?? 0) - ($dept['total_salary'] ?? 0), 0); ?>
+                                                    </td>
+                                                    <td class="px-3 py-3">
+                                                        <?php
+                                                        $utilization = $dept['utilization_percentage'] ?? 0;
+                                                        $statusClass = $utilization > 90 ? 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400' :
+                                                            ($utilization > 75 ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400' :
+                                                                'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400');
+                                                        $statusText = $utilization > 90 ? 'Over Budget' : ($utilization > 75 ? 'High Usage' : 'Normal');
+                                                        ?>
+                                                        <span
+                                                            class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium <?php echo $statusClass; ?>">
+                                                            <?php echo $statusText; ?>
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            <?php endforeach; ?>
+                                        <?php endif; ?>
                                     </tbody>
                                 </table>
                             </div>
                         </div>
 
-                        <!-- Equity Tracking -->
-                        <div class="rounded-lg border border-[hsl(var(--border))] overflow-hidden">
-                            <div class="p-3 border-b border-[hsl(var(--border))] bg-[hsl(var(--secondary))]">
-                                <div class="flex flex-col sm:flex-row gap-2 sm:items-center justify-between">
-                                    <div class="font-semibold">Equity Tracking</div>
-                                    <div class="text-sm text-slate-500">Top 20 employees by equity value</div>
+                        <!-- Salary Grade Distribution -->
+                        <div class="grid lg:grid-cols-2 gap-4">
+                            <div
+                                class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] text-[hsl(var(--card-foreground))] shadow-sm">
+                                <div class="p-4 border-b border-[hsl(var(--border))] font-semibold">Salary Grade
+                                    Distribution</div>
+                                <div class="p-4">
+                                    <?php if (empty($salaryDistribution)): ?>
+                                        <div class="text-sm text-slate-500">No salary data available</div>
+                                    <?php else: ?>
+                                        <div class="space-y-3">
+                                            <?php foreach ($salaryDistribution as $grade => $count): ?>
+                                                <div
+                                                    class="flex items-center justify-between p-3 rounded-lg border border-[hsl(var(--border))] hover:bg-[hsl(var(--accent))] transition-colors">
+                                                    <div class="font-medium text-slate-900 dark:text-slate-100">
+                                                        <?php echo htmlspecialchars($grade); ?>
+                                                    </div>
+                                                    <div class="flex items-center gap-2">
+                                                        <div class="w-16 bg-slate-200 dark:bg-slate-700 rounded-full h-2">
+                                                            <div class="bg-blue-600 h-2 rounded-full"
+                                                                style="width: <?php echo min(100, ($count / max(array_values($salaryDistribution))) * 100); ?>%">
+                                                            </div>
+                                                        </div>
+                                                        <span class="text-sm font-semibold text-blue-600 dark:text-blue-400">
+                                                            <?php echo $count; ?> employees
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            <?php endforeach; ?>
+                                        </div>
+                                    <?php endif; ?>
                                 </div>
                             </div>
-                            <div class="overflow-x-auto">
-                                <table class="min-w-full text-sm">
-                                    <thead class="bg-[hsl(var(--secondary))]">
-                                        <tr>
-                                            <th class="text-left px-3 py-2 font-semibold">Employee</th>
-                                            <th class="text-left px-3 py-2 font-semibold">Position</th>
-                                            <th class="text-left px-3 py-2 font-semibold">Current Salary</th>
-                                            <th class="text-left px-3 py-2 font-semibold">Equity Value</th>
-                                            <th class="text-left px-3 py-2 font-semibold">Equity %</th>
-                                            <th class="text-left px-3 py-2 font-semibold">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php foreach ($equityData as $equity): ?>
-                                            <?php $equityPercentage = $equity['current_salary'] > 0 ? ($equity['equity_value'] / $equity['current_salary']) * 100 : 0; ?>
-                                            <tr
-                                                class="border-b border-[hsl(var(--border))] hover:bg-[hsl(var(--secondary))]">
-                                                <td class="px-3 py-3">
-                                                    <div class="font-medium">
-                                                        <?php echo htmlspecialchars($equity['first_name'] . ' ' . $equity['last_name']); ?>
-                                                    </div>
-                                                    <div class="text-xs text-gray-500">
-                                                        <?php echo htmlspecialchars($equity['employee_number']); ?></div>
-                                                </td>
-                                                <td class="px-3 py-3">
-                                                    <div class="font-medium">
-                                                        <?php echo htmlspecialchars($equity['position_title']); ?></div>
-                                                    <div class="text-xs text-gray-500">
-                                                        <?php echo htmlspecialchars($equity['department_name']); ?></div>
-                                                </td>
-                                                <td class="px-3 py-3">
-                                                    ₱<?php echo number_format($equity['current_salary'], 0); ?></td>
-                                                <td class="px-3 py-3">
-                                                    <span
-                                                        class="font-medium text-green-600">₱<?php echo number_format($equity['equity_value'], 0); ?></span>
-                                                </td>
-                                                <td class="px-3 py-3">
-                                                    <span
-                                                        class="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">
-                                                        <?php echo number_format($equityPercentage, 1); ?>%
-                                                    </span>
-                                                </td>
-                                                <td class="px-3 py-3">
-                                                    <div class="flex gap-1">
-                                                        <button
-                                                            onclick="adjustEquity(<?php echo $equity['employee_number']; ?>)"
-                                                            class="text-blue-600 hover:text-blue-800 text-xs">Adjust</button>
-                                                        <button
-                                                            onclick="viewEquityHistory(<?php echo $equity['employee_number']; ?>)"
-                                                            class="text-green-600 hover:text-green-800 text-xs">History</button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        <?php endforeach; ?>
-                                    </tbody>
-                                </table>
+
+                            <div
+                                class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] text-[hsl(var(--card-foreground))] shadow-sm">
+                                <div class="p-4 border-b border-[hsl(var(--border))] font-semibold">Compensation Summary
+                                </div>
+                                <div class="p-4">
+                                    <div class="space-y-4">
+                                        <div class="flex justify-between">
+                                            <span class="text-sm text-slate-600 dark:text-slate-300">Total
+                                                Employees</span>
+                                            <span class="font-semibold"><?php echo count($compensationData); ?></span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-sm text-slate-600 dark:text-slate-300">Total Salary
+                                                Cost</span>
+                                            <span
+                                                class="font-semibold">₱<?php echo number_format($totalSalary, 0); ?></span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-sm text-slate-600 dark:text-slate-300">Average
+                                                Salary</span>
+                                            <span
+                                                class="font-semibold">₱<?php echo number_format($avgSalary, 0); ?></span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-sm text-slate-600 dark:text-slate-300">Budget
+                                                Utilization</span>
+                                            <span
+                                                class="font-semibold text-blue-600"><?php echo number_format($budgetUtilizationPercent, 1); ?>%</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-sm text-slate-600 dark:text-slate-300">Remaining
+                                                Budget</span>
+                                            <span
+                                                class="font-semibold text-green-600">₱<?php echo number_format($totalBudget - $totalSalary, 0); ?></span>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        <!-- Salary Grades -->
+                        <!-- Salary Grades Management -->
                         <div class="rounded-lg border border-[hsl(var(--border))] overflow-hidden">
-                            <div class="p-3 border-b border-[hsl(var(--border))] bg-[hsl(var(--secondary))]">
+                            <div class="p-4 border-b border-[hsl(var(--border))] bg-[hsl(var(--secondary))]">
                                 <div class="flex flex-col sm:flex-row gap-2 sm:items-center justify-between">
-                                    <div class="font-semibold">Salary Grades</div>
-                                    <div class="text-sm text-slate-500"><?php echo count($salaryGrades); ?> grades</div>
+                                    <div class="flex gap-2">
+                                        <h3 class="font-semibold">Salary Grades Management</h3>
+                                        <span
+                                            class="px-2 py-1 bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-400 text-xs rounded-full">
+                                            <?php echo count($salaryGrades); ?> grades
+                                        </span>
+                                    </div>
+                                    <button onclick="openCreateGradeModal()"
+                                        class="bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] px-3 py-1 rounded-md text-sm hover:opacity-95 transition-opacity">
+                                        Add Grade
+                                    </button>
                                 </div>
                             </div>
                             <div class="overflow-x-auto">
@@ -378,27 +498,45 @@ try {
                                     <tbody>
                                         <?php foreach ($salaryGrades as $grade): ?>
                                             <tr
-                                                class="border-b border-[hsl(var(--border))] hover:bg-[hsl(var(--secondary))]">
-                                                <td class="px-3 py-3">
-                                                    <div class="font-medium">
-                                                        <?php echo htmlspecialchars($grade['grade_level']); ?>
-                                                    </div>
+                                                class="border-t border-[hsl(var(--border))] hover:bg-[hsl(var(--accent))] transition-colors">
+                                                <td class="px-3 py-3 font-medium text-slate-900 dark:text-slate-100">
+                                                    <?php echo htmlspecialchars($grade['grade_level']); ?>
                                                 </td>
-                                                <td class="px-3 py-3">₱<?php echo number_format($grade['min_salary'], 0); ?>
+                                                <td class="px-3 py-3 text-slate-600 dark:text-slate-300">
+                                                    ₱<?php echo number_format($grade['min_salary'], 2); ?>
                                                 </td>
-                                                <td class="px-3 py-3">₱<?php echo number_format($grade['max_salary'], 0); ?>
+                                                <td class="px-3 py-3 text-slate-600 dark:text-slate-300">
+                                                    ₱<?php echo number_format($grade['max_salary'], 2); ?>
                                                 </td>
-                                                <td class="px-3 py-3">
-                                                    <span class="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
-                                                        ₱<?php echo number_format($grade['max_salary'] - $grade['min_salary'], 0); ?>
-                                                    </span>
+                                                <td class="px-3 py-3 text-slate-600 dark:text-slate-300">
+                                                    ₱<?php echo number_format($grade['max_salary'] - $grade['min_salary'], 2); ?>
                                                 </td>
                                                 <td class="px-3 py-3">
-                                                    <div class="flex gap-1">
-                                                        <button onclick="editSalaryGrade(<?php echo $grade['id']; ?>)"
-                                                            class="text-blue-600 hover:text-blue-800 text-xs">Edit</button>
-                                                        <button onclick="viewGradePositions(<?php echo $grade['id']; ?>)"
-                                                            class="text-green-600 hover:text-green-800 text-xs">Positions</button>
+                                                    <div class="flex items-center gap-1">
+                                                        <button
+                                                            onclick="openEditGradeModal(<?php echo $grade['id']; ?>, '<?php echo htmlspecialchars($grade['grade_level']); ?>', <?php echo $grade['min_salary']; ?>, <?php echo $grade['max_salary']; ?>)"
+                                                            class="p-1 text-slate-400 hover:text-green-600 transition-colors"
+                                                            title="Edit">
+                                                            <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                                viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                                    stroke-width="2"
+                                                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z">
+                                                                </path>
+                                                            </svg>
+                                                        </button>
+                                                        <button
+                                                            onclick="openDeleteGradeModal(<?php echo $grade['id']; ?>, '<?php echo htmlspecialchars($grade['grade_level']); ?>')"
+                                                            class="p-1 text-slate-400 hover:text-red-600 transition-colors"
+                                                            title="Delete">
+                                                            <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                                viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                                    stroke-width="2"
+                                                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
+                                                                </path>
+                                                            </svg>
+                                                        </button>
                                                     </div>
                                                 </td>
                                             </tr>
@@ -408,63 +546,83 @@ try {
                             </div>
                         </div>
 
-                        <!-- Positions by Grade -->
+                        <!-- Positions Management -->
                         <div class="rounded-lg border border-[hsl(var(--border))] overflow-hidden">
-                            <div class="p-3 border-b border-[hsl(var(--border))] bg-[hsl(var(--secondary))]">
+                            <div class="p-4 border-b border-[hsl(var(--border))] bg-[hsl(var(--secondary))]">
                                 <div class="flex flex-col sm:flex-row gap-2 sm:items-center justify-between">
-                                    <div class="font-semibold">Positions by Salary Grade</div>
-                                    <div class="text-sm text-slate-500"><?php echo count($positions); ?> positions</div>
+                                    <div class="flex gap-2">
+                                        <h3 class="font-semibold">Positions Management</h3>
+                                        <span
+                                            class="px-2 py-1 bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-400 text-xs rounded-full">
+                                            <?php echo count($positions); ?> positions
+                                        </span>
+                                    </div>
+                                    <button onclick="openCreatePositionModal()"
+                                        class="bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] px-3 py-1 rounded-md text-sm hover:opacity-95 transition-opacity">
+                                        Add Position
+                                    </button>
                                 </div>
                             </div>
                             <div class="overflow-x-auto">
                                 <table class="min-w-full text-sm">
                                     <thead class="bg-[hsl(var(--secondary))]">
                                         <tr>
-                                            <th class="text-left px-3 py-2 font-semibold">Position</th>
-                                            <th class="text-left px-3 py-2 font-semibold">Grade</th>
+                                            <th class="text-left px-3 py-2 font-semibold">Position Title</th>
+                                            <th class="text-left px-3 py-2 font-semibold">Salary Grade</th>
                                             <th class="text-left px-3 py-2 font-semibold">Salary Range</th>
-                                            <th class="text-left px-3 py-2 font-semibold">Employees</th>
+                                            <th class="text-left px-3 py-2 font-semibold">Reports To</th>
                                             <th class="text-left px-3 py-2 font-semibold">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         <?php foreach ($positions as $position): ?>
                                             <tr
-                                                class="border-b border-[hsl(var(--border))] hover:bg-[hsl(var(--secondary))]">
+                                                class="border-t border-[hsl(var(--border))] hover:bg-[hsl(var(--accent))] transition-colors">
                                                 <td class="px-3 py-3">
-                                                    <div class="font-medium">
+                                                    <div class="font-medium text-slate-900 dark:text-slate-100">
                                                         <?php echo htmlspecialchars($position['position_title']); ?>
                                                     </div>
-                                                    <div class="text-xs text-slate-500">
-                                                        <?php echo htmlspecialchars(substr($position['job_description'], 0, 50)) . '...'; ?>
+                                                    <div class="text-xs text-slate-500 truncate max-w-xs"
+                                                        title="<?php echo htmlspecialchars($position['job_description']); ?>">
+                                                        <?php echo htmlspecialchars(substr($position['job_description'], 0, 50)) . (strlen($position['job_description']) > 50 ? '...' : ''); ?>
                                                     </div>
                                                 </td>
-                                                <td class="px-3 py-3">
-                                                    <span
-                                                        class="px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded-full">
-                                                        <?php echo htmlspecialchars($position['grade_level'] ?? 'N/A'); ?>
-                                                    </span>
+                                                <td class="px-3 py-3 text-slate-600 dark:text-slate-300">
+                                                    <?php echo htmlspecialchars($position['grade_level']); ?>
+                                                </td>
+                                                <td class="px-3 py-3 text-slate-600 dark:text-slate-300">
+                                                    ₱<?php echo number_format($position['min_salary'], 0); ?> -
+                                                    ₱<?php echo number_format($position['max_salary'], 0); ?>
+                                                </td>
+                                                <td class="px-3 py-3 text-slate-600 dark:text-slate-300">
+                                                    <?php echo htmlspecialchars($position['reports_to_title'] ?? 'N/A'); ?>
                                                 </td>
                                                 <td class="px-3 py-3">
-                                                    <?php if ($position['min_salary'] && $position['max_salary']): ?>
-                                                        ₱<?php echo number_format($position['min_salary'], 0); ?> -
-                                                        ₱<?php echo number_format($position['max_salary'], 0); ?>
-                                                    <?php else: ?>
-                                                        Not set
-                                                    <?php endif; ?>
-                                                </td>
-                                                <td class="px-3 py-3">
-                                                    <span class="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
-                                                        <?php echo $position['employee_count']; ?> employees
-                                                    </span>
-                                                </td>
-                                                <td class="px-3 py-3">
-                                                    <div class="flex gap-1">
-                                                        <button onclick="editPosition(<?php echo $position['id']; ?>)"
-                                                            class="text-blue-600 hover:text-blue-800 text-xs">Edit</button>
+                                                    <div class="flex items-center gap-1">
                                                         <button
-                                                            onclick="viewPositionDetails(<?php echo $position['id']; ?>)"
-                                                            class="text-green-600 hover:text-green-800 text-xs">View</button>
+                                                            onclick="openEditPositionModal(<?php echo $position['id']; ?>, '<?php echo htmlspecialchars($position['position_title']); ?>', <?php echo $position['salary_grade_id']; ?>, '<?php echo htmlspecialchars($position['job_description']); ?>', <?php echo $position['reports_to_position_id'] ?: 'null'; ?>)"
+                                                            class="p-1 text-slate-400 hover:text-green-600 transition-colors"
+                                                            title="Edit">
+                                                            <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                                viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                                    stroke-width="2"
+                                                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z">
+                                                                </path>
+                                                            </svg>
+                                                        </button>
+                                                        <button
+                                                            onclick="openDeletePositionModal(<?php echo $position['id']; ?>, '<?php echo htmlspecialchars($position['position_title']); ?>')"
+                                                            class="p-1 text-slate-400 hover:text-red-600 transition-colors"
+                                                            title="Delete">
+                                                            <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                                viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                                    stroke-width="2"
+                                                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
+                                                                </path>
+                                                            </svg>
+                                                        </button>
                                                     </div>
                                                 </td>
                                             </tr>
@@ -473,136 +631,350 @@ try {
                                 </table>
                             </div>
                         </div>
-
-                        <!-- Recent Salary Components -->
-                        <div class="rounded-lg border border-[hsl(var(--border))] overflow-hidden">
-                            <div class="p-3 border-b border-[hsl(var(--border))] bg-[hsl(var(--secondary))]">
-                                <div class="flex flex-col sm:flex-row gap-2 sm:items-center justify-between">
-                                    <div class="font-semibold">Recent Salary Components</div>
-                                    <div class="text-sm text-slate-500">Last 20 changes</div>
-                                </div>
-                            </div>
-                            <div class="overflow-x-auto">
-                                <table class="min-w-full text-sm">
-                                    <thead class="bg-[hsl(var(--secondary))]">
-                                        <tr>
-                                            <th class="text-left px-3 py-2 font-semibold">Employee</th>
-                                            <th class="text-left px-3 py-2 font-semibold">Department</th>
-                                            <th class="text-left px-3 py-2 font-semibold">Component Type</th>
-                                            <th class="text-left px-3 py-2 font-semibold">Amount</th>
-                                            <th class="text-left px-3 py-2 font-semibold">Effective Date</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php if (empty($recentComponents)): ?>
-                                            <tr>
-                                                <td class="px-3 py-6 text-center text-slate-500" colspan="5">
-                                                    <div
-                                                        class="text-center py-10 border border-dashed border-[hsl(var(--border))] rounded-md">
-                                                        <div class="text-sm font-medium">No salary components</div>
-                                                        <div class="text-xs text-slate-500 mt-1">Add salary components to
-                                                            track compensation changes.</div>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        <?php else: ?>
-                                            <?php foreach ($recentComponents as $component): ?>
-                                                <tr
-                                                    class="border-b border-[hsl(var(--border))] hover:bg-[hsl(var(--secondary))]">
-                                                    <td class="px-3 py-3">
-                                                        <div>
-                                                            <div class="font-medium">
-                                                                <?php echo htmlspecialchars($component['first_name'] . ' ' . $component['last_name']); ?>
-                                                            </div>
-                                                            <div class="text-xs text-slate-500">
-                                                                <?php echo htmlspecialchars($component['employee_number']); ?>
-                                                            </div>
-                                                        </div>
-                                                    </td>
-                                                    <td class="px-3 py-3">
-                                                        <?php echo htmlspecialchars($component['department_name'] ?? 'N/A'); ?>
-                                                    </td>
-                                                    <td class="px-3 py-3">
-                                                        <span class="px-2 py-1 text-xs rounded-full <?php
-                                                        echo $component['component_type'] === 'Bonus' ? 'bg-green-100 text-green-800' :
-                                                            ($component['component_type'] === 'Allowance' ? 'bg-blue-100 text-blue-800' :
-                                                                ($component['component_type'] === 'HazardPay' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'));
-                                                        ?>">
-                                                            <?php echo htmlspecialchars($component['component_type']); ?>
-                                                        </span>
-                                                    </td>
-                                                    <td class="px-3 py-3">
-                                                        <div class="font-semibold">
-                                                            ₱<?php echo number_format($component['amount'], 2); ?></div>
-                                                    </td>
-                                                    <td class="px-3 py-3">
-                                                        <?php echo date('M j, Y', strtotime($component['effective_date'])); ?>
-                                                    </td>
-                                                </tr>
-                                            <?php endforeach; ?>
-                                        <?php endif; ?>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
                     </section>
+
                 </main>
             </div>
         </div>
     </div>
 
-    <!-- Add Salary Component Modal -->
-    <div id="addComponentModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
-        <div class="flex items-center justify-center min-h-screen p-4">
-            <div class="bg-white rounded-lg p-6 w-full max-w-md">
-                <h3 class="text-lg font-semibold mb-4">Add Salary Component</h3>
-                <form method="POST">
-                    <input type="hidden" name="action" value="add_salary_component">
-                    <div class="space-y-4">
-                        <div>
-                            <label class="block text-sm font-medium mb-1">Employee</label>
-                            <select name="employee_id" required
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                <option value="">Select Employee</option>
-                                <?php
-                                $stmt = $pdo->query("SELECT id, CONCAT(first_name, ' ', last_name) as full_name, employee_number FROM employees WHERE status = 'Active' ORDER BY first_name, last_name");
-                                $employees = $stmt->fetchAll();
-                                foreach ($employees as $emp): ?>
-                                    <option value="<?php echo $emp['id']; ?>">
-                                        <?php echo htmlspecialchars($emp['full_name'] . ' (' . $emp['employee_number'] . ')'); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium mb-1">Component Type</label>
-                            <select name="component_type" required
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                <option value="">Select Type</option>
-                                <option value="Allowance">Allowance</option>
-                                <option value="Bonus">Bonus</option>
-                                <option value="HazardPay">Hazard Pay</option>
-                                <option value="LoanDeduction">Loan Deduction</option>
-                                <option value="Other">Other</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium mb-1">Amount</label>
-                            <input type="number" name="amount" step="0.01" required
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium mb-1">Effective Date</label>
-                            <input type="date" name="effective_date" required
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        </div>
+    <!-- Create Salary Grade Modal -->
+    <div id="createGradeModal"
+        class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-[hsl(var(--card))] rounded-lg shadow-xl max-w-md w-full">
+            <div class="p-6 border-b border-[hsl(var(--border))]">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-lg font-semibold">Add Salary Grade</h3>
+                    <button onclick="closeCreateGradeModal()"
+                        class="text-slate-400 hover:text-slate-600 transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <form method="POST" class="p-6 space-y-4">
+                <input type="hidden" name="action" value="create_salary_grade">
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Grade Level
+                        *</label>
+                    <input type="text" name="grade_level" required
+                        class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Min Salary
+                            *</label>
+                        <input type="number" name="min_salary" step="0.01" min="0" required
+                            class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]">
                     </div>
-                    <div class="flex gap-2 mt-6">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Max Salary
+                            *</label>
+                        <input type="number" name="max_salary" step="0.01" min="0" required
+                            class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]">
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-3 pt-4">
+                    <button type="button" onclick="closeCreateGradeModal()"
+                        class="px-4 py-2 border border-[hsl(var(--border))] text-[hsl(var(--foreground))] rounded-md hover:bg-[hsl(var(--accent))] transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit"
+                        class="px-4 py-2 bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] rounded-md hover:opacity-95 transition-opacity">
+                        Create Grade
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Salary Grade Modal -->
+    <div id="editGradeModal"
+        class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-[hsl(var(--card))] rounded-lg shadow-xl max-w-md w-full">
+            <div class="p-6 border-b border-[hsl(var(--border))]">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-lg font-semibold">Edit Salary Grade</h3>
+                    <button onclick="closeEditGradeModal()"
+                        class="text-slate-400 hover:text-slate-600 transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <form method="POST" class="p-6 space-y-4">
+                <input type="hidden" name="action" value="update_salary_grade">
+                <input type="hidden" name="grade_id" id="edit_grade_id">
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Grade Level
+                        *</label>
+                    <input type="text" name="grade_level" id="edit_grade_level" required
+                        class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Min Salary
+                            *</label>
+                        <input type="number" name="min_salary" id="edit_min_salary" step="0.01" min="0" required
+                            class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Max Salary
+                            *</label>
+                        <input type="number" name="max_salary" id="edit_max_salary" step="0.01" min="0" required
+                            class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]">
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-3 pt-4">
+                    <button type="button" onclick="closeEditGradeModal()"
+                        class="px-4 py-2 border border-[hsl(var(--border))] text-[hsl(var(--foreground))] rounded-md hover:bg-[hsl(var(--accent))] transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit"
+                        class="px-4 py-2 bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] rounded-md hover:opacity-95 transition-opacity">
+                        Update Grade
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Delete Grade Confirmation Modal -->
+    <div id="deleteGradeModal"
+        class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-[hsl(var(--card))] rounded-lg shadow-xl max-w-md w-full">
+            <div class="p-6">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="w-10 h-10 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center">
+                        <svg class="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z">
+                            </path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-semibold">Confirm Deletion</h3>
+                        <p class="text-sm text-slate-500">This action cannot be undone.</p>
+                    </div>
+                </div>
+                <p class="text-sm text-slate-600 dark:text-slate-300 mb-6">
+                    Are you sure you want to delete this salary grade? This will affect all positions using this grade.
+                </p>
+                <form method="POST" id="deleteGradeForm">
+                    <input type="hidden" name="action" value="delete_salary_grade">
+                    <input type="hidden" name="grade_id" id="delete_grade_id">
+                    <div class="flex justify-end gap-3">
+                        <button type="button" onclick="closeDeleteGradeModal()"
+                            class="px-4 py-2 border border-[hsl(var(--border))] text-[hsl(var(--foreground))] rounded-md hover:bg-[hsl(var(--accent))] transition-colors">
+                            Cancel
+                        </button>
                         <button type="submit"
-                            class="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700">Add
-                            Component</button>
-                        <button type="button" onclick="closeAddComponentModal()"
-                            class="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-400">Cancel</button>
+                            class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors">
+                            Delete Grade
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Position Modal -->
+    <div id="createPositionModal"
+        class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-[hsl(var(--card))] rounded-lg shadow-xl max-w-lg w-full">
+            <div class="p-6 border-b border-[hsl(var(--border))]">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-lg font-semibold">Add Position</h3>
+                    <button onclick="closeCreatePositionModal()"
+                        class="text-slate-400 hover:text-slate-600 transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <form method="POST" class="p-6 space-y-4">
+                <input type="hidden" name="action" value="create_position">
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Position Title
+                        *</label>
+                    <input type="text" name="position_title" required
+                        class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Salary Grade
+                        *</label>
+                    <select name="salary_grade_id" required
+                        class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]">
+                        <option value="">Select Grade</option>
+                        <?php foreach ($salaryGrades as $grade): ?>
+                            <option value="<?php echo $grade['id']; ?>">
+                                <?php echo htmlspecialchars($grade['grade_level']); ?>
+                                (₱<?php echo number_format($grade['min_salary'], 0); ?> -
+                                ₱<?php echo number_format($grade['max_salary'], 0); ?>)</option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Reports To
+                        Position</label>
+                    <select name="reports_to_position_id"
+                        class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]">
+                        <option value="">Select Position (Optional)</option>
+                        <?php foreach ($positions as $pos): ?>
+                            <option value="<?php echo $pos['id']; ?>">
+                                <?php echo htmlspecialchars($pos['position_title']); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Job Description
+                        *</label>
+                    <textarea name="job_description" rows="4" required
+                        class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]"></textarea>
+                </div>
+
+                <div class="flex justify-end gap-3 pt-4">
+                    <button type="button" onclick="closeCreatePositionModal()"
+                        class="px-4 py-2 border border-[hsl(var(--border))] text-[hsl(var(--foreground))] rounded-md hover:bg-[hsl(var(--accent))] transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit"
+                        class="px-4 py-2 bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] rounded-md hover:opacity-95 transition-opacity">
+                        Create Position
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Position Modal -->
+    <div id="editPositionModal"
+        class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-[hsl(var(--card))] rounded-lg shadow-xl max-w-lg w-full">
+            <div class="p-6 border-b border-[hsl(var(--border))]">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-lg font-semibold">Edit Position</h3>
+                    <button onclick="closeEditPositionModal()"
+                        class="text-slate-400 hover:text-slate-600 transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <form method="POST" class="p-6 space-y-4">
+                <input type="hidden" name="action" value="update_position">
+                <input type="hidden" name="position_id" id="edit_position_id">
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Position Title
+                        *</label>
+                    <input type="text" name="position_title" id="edit_position_title" required
+                        class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Salary Grade
+                        *</label>
+                    <select name="salary_grade_id" id="edit_salary_grade_id" required
+                        class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]">
+                        <option value="">Select Grade</option>
+                        <?php foreach ($salaryGrades as $grade): ?>
+                            <option value="<?php echo $grade['id']; ?>">
+                                <?php echo htmlspecialchars($grade['grade_level']); ?>
+                                (₱<?php echo number_format($grade['min_salary'], 0); ?> -
+                                ₱<?php echo number_format($grade['max_salary'], 0); ?>)</option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Reports To
+                        Position</label>
+                    <select name="reports_to_position_id" id="edit_reports_to_position_id"
+                        class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]">
+                        <option value="">Select Position (Optional)</option>
+                        <?php foreach ($positions as $pos): ?>
+                            <option value="<?php echo $pos['id']; ?>">
+                                <?php echo htmlspecialchars($pos['position_title']); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Job Description
+                        *</label>
+                    <textarea name="job_description" id="edit_job_description" rows="4" required
+                        class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]"></textarea>
+                </div>
+
+                <div class="flex justify-end gap-3 pt-4">
+                    <button type="button" onclick="closeEditPositionModal()"
+                        class="px-4 py-2 border border-[hsl(var(--border))] text-[hsl(var(--foreground))] rounded-md hover:bg-[hsl(var(--accent))] transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit"
+                        class="px-4 py-2 bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] rounded-md hover:opacity-95 transition-opacity">
+                        Update Position
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Delete Position Confirmation Modal -->
+    <div id="deletePositionModal"
+        class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-[hsl(var(--card))] rounded-lg shadow-xl max-w-md w-full">
+            <div class="p-6">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="w-10 h-10 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center">
+                        <svg class="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z">
+                            </path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-semibold">Confirm Deletion</h3>
+                        <p class="text-sm text-slate-500">This action cannot be undone.</p>
+                    </div>
+                </div>
+                <p class="text-sm text-slate-600 dark:text-slate-300 mb-6">
+                    Are you sure you want to delete this position? This will affect all employees assigned to this
+                    position.
+                </p>
+                <form method="POST" id="deletePositionForm">
+                    <input type="hidden" name="action" value="delete_position">
+                    <input type="hidden" name="position_id" id="delete_position_id">
+                    <div class="flex justify-end gap-3">
+                        <button type="button" onclick="closeDeletePositionModal()"
+                            class="px-4 py-2 border border-[hsl(var(--border))] text-[hsl(var(--foreground))] rounded-md hover:bg-[hsl(var(--accent))] transition-colors">
+                            Cancel
+                        </button>
+                        <button type="submit"
+                            class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors">
+                            Delete Position
+                        </button>
                     </div>
                 </form>
             </div>
@@ -611,76 +983,78 @@ try {
 
     <script src="/HR4_COMPEN&INTELLI/shared/scripts.js"></script>
     <script>
-        function openAddComponentModal() {
-            document.getElementById('addComponentModal').classList.remove('hidden');
+        // Grade Modal functions
+        function openCreateGradeModal() {
+            document.getElementById('createGradeModal').classList.remove('hidden');
         }
 
-        function closeAddComponentModal() {
-            document.getElementById('addComponentModal').classList.add('hidden');
+        function closeCreateGradeModal() {
+            document.getElementById('createGradeModal').classList.add('hidden');
         }
 
-        function openSalaryReviewModal() {
-            alert('Salary review functionality coming soon');
+        function openEditGradeModal(gradeId, gradeLevel, minSalary, maxSalary) {
+            document.getElementById('edit_grade_id').value = gradeId;
+            document.getElementById('edit_grade_level').value = gradeLevel;
+            document.getElementById('edit_min_salary').value = minSalary;
+            document.getElementById('edit_max_salary').value = maxSalary;
+            document.getElementById('editGradeModal').classList.remove('hidden');
         }
 
-        function editSalaryGrade(id) {
-            alert('Edit salary grade ' + id);
+        function closeEditGradeModal() {
+            document.getElementById('editGradeModal').classList.add('hidden');
         }
 
-        function viewGradePositions(id) {
-            alert('View positions for grade ' + id);
+        function openDeleteGradeModal(gradeId, gradeLevel) {
+            document.getElementById('delete_grade_id').value = gradeId;
+            document.getElementById('deleteGradeModal').classList.remove('hidden');
         }
 
-        function editPosition(id) {
-            alert('Edit position ' + id);
+        function closeDeleteGradeModal() {
+            document.getElementById('deleteGradeModal').classList.add('hidden');
         }
 
-        function viewPositionDetails(id) {
-            alert('View position details ' + id);
+        // Position Modal functions
+        function openCreatePositionModal() {
+            document.getElementById('createPositionModal').classList.remove('hidden');
         }
 
-        function exportCompensation() {
-            alert('Export compensation functionality coming soon');
+        function closeCreatePositionModal() {
+            document.getElementById('createPositionModal').classList.add('hidden');
         }
 
-        // Budget Management Functions
-        function adjustBudget(departmentName) {
-            const newBudget = prompt(`Adjust budget for ${departmentName}:`, '');
-            if (newBudget && !isNaN(newBudget)) {
-                alert(`Budget adjustment for ${departmentName}: ₱${parseFloat(newBudget).toLocaleString()}`);
-                // This would submit a form to update the budget
+        function openEditPositionModal(positionId, positionTitle, salaryGradeId, jobDescription, reportsToPositionId) {
+            document.getElementById('edit_position_id').value = positionId;
+            document.getElementById('edit_position_title').value = positionTitle;
+            document.getElementById('edit_salary_grade_id').value = salaryGradeId;
+            document.getElementById('edit_job_description').value = jobDescription;
+            document.getElementById('edit_reports_to_position_id').value = reportsToPositionId || '';
+            document.getElementById('editPositionModal').classList.remove('hidden');
+        }
+
+        function closeEditPositionModal() {
+            document.getElementById('editPositionModal').classList.add('hidden');
+        }
+
+        function openDeletePositionModal(positionId, positionTitle) {
+            document.getElementById('delete_position_id').value = positionId;
+            document.getElementById('deletePositionModal').classList.remove('hidden');
+        }
+
+        function closeDeletePositionModal() {
+            document.getElementById('deletePositionModal').classList.add('hidden');
+        }
+
+        // Close modals when clicking outside
+        document.addEventListener('click', function (e) {
+            if (e.target.classList.contains('fixed')) {
+                closeCreateGradeModal();
+                closeEditGradeModal();
+                closeDeleteGradeModal();
+                closeCreatePositionModal();
+                closeEditPositionModal();
+                closeDeletePositionModal();
             }
-        }
-
-        function viewBudgetDetails(departmentName) {
-            alert(`Budget details for ${departmentName} - This would show detailed budget breakdown and history`);
-        }
-
-        // Equity Management Functions
-        function adjustEquity(employeeNumber) {
-            const newEquity = prompt(`Adjust equity for employee ${employeeNumber}:`, '');
-            if (newEquity && !isNaN(newEquity)) {
-                alert(`Equity adjustment for employee ${employeeNumber}: ₱${parseFloat(newEquity).toLocaleString()}`);
-                // This would submit a form to update equity
-            }
-        }
-
-        function viewEquityHistory(employeeNumber) {
-            alert(`Equity history for employee ${employeeNumber} - This would show equity changes over time`);
-        }
-
-        // Enhanced Quick Actions
-        function openBudgetPlanning() {
-            alert('Budget planning functionality - Create annual compensation budgets and allocations');
-        }
-
-        function openEquityManagement() {
-            alert('Equity management functionality - Manage employee equity programs and vesting schedules');
-        }
-
-        function openCompensationAnalysis() {
-            alert('Compensation analysis functionality - Analyze pay equity and market competitiveness');
-        }
+        });
     </script>
 </body>
 

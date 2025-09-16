@@ -2,133 +2,155 @@
 // HR Manager Benefits Administration Page
 include_once __DIR__ . '/../../shared/header.php';
 include_once __DIR__ . '/../../shared/sidebar.php';
+include_once __DIR__ . '/../../shared/database_helper.php';
 include_once __DIR__ . '/../../routing/rbac.php';
-include_once __DIR__ . '/../../config/database.php';
 
 $activeId = 'benefits';
 $sidebarItems = $SIDEBAR_ITEMS[$user['role']] ?? [];
 
-// Handle form submissions
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($_POST['action'])) {
-        switch ($_POST['action']) {
-            case 'add_enrollment':
-                try {
-                    $stmt = $pdo->prepare("INSERT INTO benefit_enrollments (employee_id, plan_id, enrollment_date, status) VALUES (?, ?, ?, ?)");
-                    $stmt->execute([
-                        $_POST['employee_id'],
-                        $_POST['plan_id'],
-                        $_POST['enrollment_date'],
-                        'Active'
-                    ]);
-                    $success = "Benefit enrollment added successfully!";
-                } catch (PDOException $e) {
-                    $error = "Error adding enrollment: " . $e->getMessage();
-                }
-                break;
+// Initialize database helper
+$dbHelper = new DatabaseHelper();
 
-            case 'update_claim_status':
-                try {
-                    $stmt = $pdo->prepare("UPDATE benefit_claims SET status = ? WHERE id = ?");
-                    $stmt->execute([$_POST['status'], $_POST['claim_id']]);
-                    $success = "Claim status updated successfully!";
-                } catch (PDOException $e) {
-                    $error = "Error updating claim: " . $e->getMessage();
-                }
-                break;
+// Handle CRUD operations
+$message = '';
+$messageType = '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $action = $_POST['action'] ?? '';
+
+    if ($action === 'create_hmo_plan') {
+        try {
+            $planName = $_POST['plan_name'] ?? '';
+            $providerId = intval($_POST['provider_id'] ?? 0);
+            $premiumAmount = floatval($_POST['premium_amount'] ?? 0);
+            $coverageDetails = $_POST['coverage_details'] ?? '';
+
+            $dbHelper->query("
+                INSERT INTO hmo_plans (plan_name, provider_id, premium_amount, coverage_details) 
+                VALUES (?, ?, ?, ?)
+            ", [$planName, $providerId, $premiumAmount, $coverageDetails]);
+
+            $message = 'HMO plan created successfully!';
+            $messageType = 'success';
+        } catch (Exception $e) {
+            $message = 'Error creating HMO plan: ' . $e->getMessage();
+            $messageType = 'error';
+        }
+    } elseif ($action === 'update_hmo_plan') {
+        try {
+            $planId = intval($_POST['plan_id'] ?? 0);
+            $planName = $_POST['plan_name'] ?? '';
+            $providerId = intval($_POST['provider_id'] ?? 0);
+            $premiumAmount = floatval($_POST['premium_amount'] ?? 0);
+            $coverageDetails = $_POST['coverage_details'] ?? '';
+
+            $dbHelper->query("
+                UPDATE hmo_plans 
+                SET plan_name = ?, provider_id = ?, premium_amount = ?, coverage_details = ?
+                WHERE id = ?
+            ", [$planName, $providerId, $premiumAmount, $coverageDetails, $planId]);
+
+            $message = 'HMO plan updated successfully!';
+            $messageType = 'success';
+        } catch (Exception $e) {
+            $message = 'Error updating HMO plan: ' . $e->getMessage();
+            $messageType = 'error';
+        }
+    } elseif ($action === 'delete_hmo_plan') {
+        try {
+            $planId = intval($_POST['plan_id'] ?? 0);
+            $dbHelper->query("DELETE FROM hmo_plans WHERE id = ?", [$planId]);
+            $message = 'HMO plan deleted successfully!';
+            $messageType = 'success';
+        } catch (Exception $e) {
+            $message = 'Error deleting HMO plan: ' . $e->getMessage();
+            $messageType = 'error';
+        }
+    } elseif ($action === 'create_enrollment') {
+        try {
+            $employeeId = intval($_POST['employee_id'] ?? 0);
+            $planId = intval($_POST['plan_id'] ?? 0);
+            $enrollmentDate = $_POST['enrollment_date'] ?? date('Y-m-d');
+
+            $dbHelper->query("
+                INSERT INTO benefit_enrollments (employee_id, plan_id, enrollment_date, status) 
+                VALUES (?, ?, ?, 'Active')
+            ", [$employeeId, $planId, $enrollmentDate]);
+
+            $message = 'Employee enrolled successfully!';
+            $messageType = 'success';
+        } catch (Exception $e) {
+            $message = 'Error enrolling employee: ' . $e->getMessage();
+            $messageType = 'error';
+        }
+    } elseif ($action === 'update_enrollment') {
+        try {
+            $enrollmentId = intval($_POST['enrollment_id'] ?? 0);
+            $planId = intval($_POST['plan_id'] ?? 0);
+            $status = $_POST['status'] ?? 'Active';
+
+            $dbHelper->query("
+                UPDATE benefit_enrollments 
+                SET plan_id = ?, status = ?
+                WHERE id = ?
+            ", [$planId, $status, $enrollmentId]);
+
+            $message = 'Enrollment updated successfully!';
+            $messageType = 'success';
+        } catch (Exception $e) {
+            $message = 'Error updating enrollment: ' . $e->getMessage();
+            $messageType = 'error';
+        }
+    } elseif ($action === 'delete_enrollment') {
+        try {
+            $enrollmentId = intval($_POST['enrollment_id'] ?? 0);
+            $dbHelper->query("DELETE FROM benefit_enrollments WHERE id = ?", [$enrollmentId]);
+            $message = 'Enrollment deleted successfully!';
+            $messageType = 'success';
+        } catch (Exception $e) {
+            $message = 'Error deleting enrollment: ' . $e->getMessage();
+            $messageType = 'error';
+        }
+    } elseif (in_array($action, ['approve_claim', 'reject_claim'])) {
+        $claimId = intval($_POST['claim_id'] ?? 0);
+        if ($claimId > 0) {
+            $newStatus = $action === 'approve_claim' ? 'Approved' : 'Rejected';
+            $dbHelper->query("UPDATE benefit_claims SET status = ? WHERE id = ?", [$newStatus, $claimId]);
+            $message = 'Claim ' . strtolower($newStatus) . ' successfully!';
+            $messageType = 'success';
         }
     }
 }
 
-// Fetch benefits data
-try {
-    // HMO Plans with providers
-    $stmt = $pdo->query("SELECT hp.*, p.provider_name, p.contact_info, COUNT(be.id) as enrollment_count
-                        FROM hmo_plans hp
-                        JOIN providers p ON hp.provider_id = p.id
-                        LEFT JOIN benefit_enrollments be ON hp.id = be.plan_id AND be.status = 'Active'
-                        GROUP BY hp.id
-                        ORDER BY p.provider_name, hp.plan_name");
-    $hmoPlans = $stmt->fetchAll();
+// Get benefits data
+$statusFilter = $_GET['status'] ?? '';
 
-    // All providers with detailed information
-    $stmt = $pdo->query("SELECT p.*, COUNT(hp.id) as plan_count, COUNT(be.id) as total_enrollments,
-                        SUM(hp.premium_amount * COUNT(be.id)) as total_revenue
-                        FROM providers p
-                        LEFT JOIN hmo_plans hp ON p.id = hp.provider_id
-                        LEFT JOIN benefit_enrollments be ON hp.id = be.plan_id AND be.status = 'Active'
-                        GROUP BY p.id
-                        ORDER BY p.provider_name");
-    $providers = $stmt->fetchAll();
+$benefitsData = $dbHelper->getBenefitsData();
+$hmoPlans = $dbHelper->getHMOPlans();
+$benefitClaims = $statusFilter && in_array($statusFilter, ['Pending', 'Approved', 'Rejected', 'Paid'])
+    ? $dbHelper->getBenefitClaims($statusFilter)
+    : $dbHelper->getBenefitClaims();
 
-    // Benefit enrollments with employee details
-    $stmt = $pdo->query("SELECT be.*, e.first_name, e.last_name, e.employee_number, d.department_name, hp.plan_name, p.provider_name
-                        FROM benefit_enrollments be
-                        JOIN employees e ON be.employee_id = e.id
-                        LEFT JOIN departments d ON e.department_id = d.id
-                        JOIN hmo_plans hp ON be.plan_id = hp.id
-                        JOIN providers p ON hp.provider_id = p.id
-                        ORDER BY be.enrollment_date DESC
-                        LIMIT 20");
-    $recentEnrollments = $stmt->fetchAll();
+// Get providers
+$providers = $dbHelper->fetchAll("SELECT * FROM providers ORDER BY provider_name");
 
-    // Detailed benefit claims with processing information
-    $stmt = $pdo->query("SELECT bc.*, e.first_name, e.last_name, e.employee_number, d.department_name, 
-                        hp.plan_name, p.provider_name, p.contact_info,
-                        DATEDIFF(CURDATE(), bc.claim_date) as days_pending
-                        FROM benefit_claims bc
-                        JOIN employees e ON bc.employee_id = e.id
-                        LEFT JOIN departments d ON e.department_id = d.id
-                        JOIN hmo_plans hp ON bc.plan_id = hp.id
-                        JOIN providers p ON hp.provider_id = p.id
-                        ORDER BY bc.claim_date DESC
-                        LIMIT 30");
-    $recentClaims = $stmt->fetchAll();
+// Calculate totals
+$totalEnrollments = count($benefitsData);
+$totalPlans = count($hmoPlans);
+$totalClaims = count($benefitClaims);
+$pendingClaims = count(array_filter($benefitClaims, function ($claim) {
+    return $claim['status'] === 'Pending';
+}));
 
-    // Claims by status
-    $claimsByStatus = $pdo->query("SELECT status, COUNT(*) as count, SUM(claim_amount) as total_amount
-                                  FROM benefit_claims 
-                                  GROUP BY status")->fetchAll();
+// Get claim statistics
+$totalClaimAmount = array_sum(array_column($benefitClaims, 'claim_amount'));
+$paidClaims = array_filter($benefitClaims, function ($claim) {
+    return $claim['status'] === 'Paid';
+});
+$totalPaidAmount = array_sum(array_column($paidClaims, 'claim_amount'));
 
-    // Provider performance metrics
-    $providerMetrics = $pdo->query("SELECT p.provider_name, 
-                                   COUNT(bc.id) as total_claims,
-                                   AVG(bc.claim_amount) as avg_claim_amount,
-                                   SUM(CASE WHEN bc.status = 'Approved' THEN 1 ELSE 0 END) as approved_claims,
-                                   SUM(CASE WHEN bc.status = 'Pending' THEN 1 ELSE 0 END) as pending_claims,
-                                   AVG(CASE WHEN bc.status = 'Approved' THEN DATEDIFF(bc.processed_date, bc.claim_date) ELSE NULL END) as avg_processing_days
-                                   FROM providers p
-                                   JOIN hmo_plans hp ON p.id = hp.provider_id
-                                   JOIN benefit_claims bc ON hp.id = bc.plan_id
-                                   GROUP BY p.id
-                                   ORDER BY total_claims DESC")->fetchAll();
-
-    // Benefits statistics
-    $totalPlans = $pdo->query("SELECT COUNT(*) FROM hmo_plans")->fetchColumn();
-    $activeEnrollments = $pdo->query("SELECT COUNT(*) FROM benefit_enrollments WHERE status = 'Active'")->fetchColumn();
-    $totalClaims = $pdo->query("SELECT COUNT(*) FROM benefit_claims")->fetchColumn();
-    $pendingClaims = $pdo->query("SELECT COUNT(*) FROM benefit_claims WHERE status = 'Pending'")->fetchColumn();
-
-    // Total benefits cost
-    $totalBenefitsCost = $pdo->query("SELECT SUM(hp.premium_amount * COUNT(be.id)) FROM hmo_plans hp 
-                                     LEFT JOIN benefit_enrollments be ON hp.id = be.plan_id AND be.status = 'Active'
-                                     GROUP BY hp.id")->fetchColumn();
-
-    // Claims processing statistics
-    $totalClaimAmount = $pdo->query("SELECT SUM(claim_amount) FROM benefit_claims")->fetchColumn();
-    $approvedClaimAmount = $pdo->query("SELECT SUM(claim_amount) FROM benefit_claims WHERE status = 'Approved'")->fetchColumn();
-    $pendingClaimAmount = $pdo->query("SELECT SUM(claim_amount) FROM benefit_claims WHERE status = 'Pending'")->fetchColumn();
-
-} catch (PDOException $e) {
-    $hmoPlans = [];
-    $providers = [];
-    $recentEnrollments = [];
-    $recentClaims = [];
-    $claimsByStatus = [];
-    $providerMetrics = [];
-    $totalPlans = $activeEnrollments = $totalClaims = $pendingClaims = $totalBenefitsCost = 0;
-    $totalClaimAmount = $approvedClaimAmount = $pendingClaimAmount = 0;
-}
+// Get recent claims for better display
+$recentClaims = array_slice($benefitClaims, 0, 10);
 ?>
 
 <!DOCTYPE html>
@@ -156,228 +178,121 @@ try {
                             <p class="text-xs text-slate-500 mt-1">Plans, enrollments, claims and providers</p>
                         </div>
 
-                        <?php if (isset($success)): ?>
-                            <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
-                                <?php echo htmlspecialchars($success); ?>
+                        <!-- Message Display -->
+                        <?php if ($message): ?>
+                            <div
+                                class="rounded-lg border border-[hsl(var(--border))] p-4 <?php echo $messageType === 'success' ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'; ?>">
+                                <div class="flex items-center gap-2">
+                                    <svg class="w-5 h-5 <?php echo $messageType === 'success' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'; ?>"
+                                        fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <?php if ($messageType === 'success'): ?>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M5 13l4 4L19 7"></path>
+                                        <?php else: ?>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M6 18L18 6M6 6l12 12"></path>
+                                        <?php endif; ?>
+                                    </svg>
+                                    <span
+                                        class="text-sm font-medium <?php echo $messageType === 'success' ? 'text-green-800 dark:text-green-200' : 'text-red-800 dark:text-red-200'; ?>">
+                                        <?php echo htmlspecialchars($message); ?>
+                                    </span>
+                                </div>
                             </div>
                         <?php endif; ?>
 
-                        <?php if (isset($error)): ?>
-                            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-                                <?php echo htmlspecialchars($error); ?>
-                            </div>
-                        <?php endif; ?>
-
-                        <!-- Quick Actions -->
-                        <div class="flex flex-wrap gap-2">
-                            <button onclick="openEnrollmentModal()"
-                                class="bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] shadow hover:opacity-95 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-9 px-3">
-                                New Enrollment
-                            </button>
-                            <button onclick="openProviderModal()"
-                                class="bg-orange-600 text-white shadow hover:opacity-95 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-9 px-3">
-                                Add Provider
-                            </button>
-                            <button onclick="openProviderManagement()"
-                                class="bg-blue-600 text-white shadow hover:opacity-95 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-9 px-3">
-                                Provider Mgmt
-                            </button>
-                            <button onclick="openClaimsAnalytics()"
-                                class="bg-indigo-600 text-white shadow hover:opacity-95 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-9 px-3">
-                                Analytics
-                            </button>
-                            <button onclick="exportBenefits()"
-                                class="bg-slate-600 text-white shadow hover:opacity-95 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-9 px-3">
-                                Export Data
-                            </button>
-                        </div>
-
-                        <!-- Benefits Statistics -->
+                        <!-- Benefits Stats -->
                         <div class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">
-                            <div class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
-                                <div class="text-xs text-slate-500 mb-1">HMO Plans</div>
-                                <div class="text-2xl font-semibold"><?php echo number_format($totalPlans); ?></div>
-                                <div class="text-xs text-blue-600 mt-1">Available plans</div>
-                            </div>
-                            <div class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
-                                <div class="text-xs text-slate-500 mb-1">Active Enrollments</div>
-                                <div class="text-2xl font-semibold"><?php echo number_format($activeEnrollments); ?>
-                                </div>
-                                <div class="text-xs text-green-600 mt-1">Enrolled employees</div>
-                            </div>
-                            <div class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
-                                <div class="text-xs text-slate-500 mb-1">Total Claims</div>
-                                <div class="text-2xl font-semibold"><?php echo number_format($totalClaims); ?></div>
-                                <div class="text-xs text-purple-600 mt-1">All time</div>
-                            </div>
-                            <div class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
-                                <div class="text-xs text-slate-500 mb-1">Pending Claims</div>
-                                <div class="text-2xl font-semibold"><?php echo number_format($pendingClaims); ?></div>
-                                <div class="text-xs text-orange-600 mt-1">Awaiting review</div>
-                            </div>
-                        </div>
-
-                        <!-- Provider Management -->
-                        <div class="rounded-lg border border-[hsl(var(--border))] overflow-hidden">
-                            <div class="p-3 border-b border-[hsl(var(--border))] bg-[hsl(var(--secondary))]">
-                                <div class="flex flex-col sm:flex-row gap-2 sm:items-center justify-between">
-                                    <div class="font-semibold">Provider Management</div>
-                                    <div class="text-sm text-slate-500"><?php echo count($providers); ?> providers</div>
+                            <div
+                                class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4 hover:shadow-md transition-shadow">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <div class="text-xs text-slate-500 mb-1">Active Enrollments</div>
+                                        <div class="text-2xl font-semibold"><?php echo $totalEnrollments; ?></div>
+                                    </div>
+                                    <div
+                                        class="w-10 h-10 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex items-center justify-center">
+                                        <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none"
+                                            stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z">
+                                            </path>
+                                        </svg>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="overflow-x-auto">
-                                <table class="min-w-full text-sm">
-                                    <thead class="bg-[hsl(var(--secondary))]">
-                                        <tr>
-                                            <th class="text-left px-3 py-2 font-semibold">Provider</th>
-                                            <th class="text-left px-3 py-2 font-semibold">Plans</th>
-                                            <th class="text-left px-3 py-2 font-semibold">Enrollments</th>
-                                            <th class="text-left px-3 py-2 font-semibold">Revenue</th>
-                                            <th class="text-left px-3 py-2 font-semibold">Contact</th>
-                                            <th class="text-left px-3 py-2 font-semibold">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php foreach ($providers as $provider): ?>
-                                            <tr
-                                                class="border-b border-[hsl(var(--border))] hover:bg-[hsl(var(--secondary))]">
-                                                <td class="px-3 py-3">
-                                                    <div class="font-medium">
-                                                        <?php echo htmlspecialchars($provider['provider_name']); ?></div>
-                                                    <div class="text-xs text-gray-500">
-                                                        <?php echo htmlspecialchars($provider['provider_type']); ?></div>
-                                                </td>
-                                                <td class="px-3 py-3">
-                                                    <span class="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
-                                                        <?php echo $provider['plan_count']; ?> plans
-                                                    </span>
-                                                </td>
-                                                <td class="px-3 py-3">
-                                                    <div class="font-medium">
-                                                        <?php echo number_format($provider['total_enrollments']); ?></div>
-                                                    <div class="text-xs text-gray-500">active</div>
-                                                </td>
-                                                <td class="px-3 py-3">
-                                                    <div class="font-medium">
-                                                        ₱<?php echo number_format($provider['total_revenue'] ?? 0, 0); ?>
-                                                    </div>
-                                                    <div class="text-xs text-gray-500">monthly</div>
-                                                </td>
-                                                <td class="px-3 py-3">
-                                                    <div class="text-xs">
-                                                        <?php echo htmlspecialchars(substr($provider['contact_info'], 0, 40)) . '...'; ?>
-                                                    </div>
-                                                </td>
-                                                <td class="px-3 py-3">
-                                                    <div class="flex gap-1">
-                                                        <button onclick="editProvider(<?php echo $provider['id']; ?>)"
-                                                            class="text-blue-600 hover:text-blue-800 text-xs">Edit</button>
-                                                        <button
-                                                            onclick="viewProviderDetails(<?php echo $provider['id']; ?>)"
-                                                            class="text-green-600 hover:text-green-800 text-xs">Details</button>
-                                                        <button
-                                                            onclick="viewProviderPerformance(<?php echo $provider['id']; ?>)"
-                                                            class="text-purple-600 hover:text-purple-800 text-xs">Performance</button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        <?php endforeach; ?>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-
-                        <!-- Claims Processing Dashboard -->
-                        <div class="rounded-lg border border-[hsl(var(--border))] overflow-hidden">
-                            <div class="p-3 border-b border-[hsl(var(--border))] bg-[hsl(var(--secondary))]">
-                                <div class="flex flex-col sm:flex-row gap-2 sm:items-center justify-between">
-                                    <div class="font-semibold">Claims Processing Dashboard</div>
-                                    <div class="text-sm text-slate-500">Real-time processing status</div>
+                            <div
+                                class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4 hover:shadow-md transition-shadow">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <div class="text-xs text-slate-500 mb-1">HMO Plans</div>
+                                        <div class="text-2xl font-semibold"><?php echo $totalPlans; ?></div>
+                                    </div>
+                                    <div
+                                        class="w-10 h-10 bg-green-100 dark:bg-green-900/20 rounded-lg flex items-center justify-center">
+                                        <svg class="w-5 h-5 text-green-600 dark:text-green-400" fill="none"
+                                            stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                                            </path>
+                                        </svg>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="p-4">
-                                <!-- Claims Status Overview -->
-                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                                    <?php foreach ($claimsByStatus as $status): ?>
-                                        <div class="bg-white border border-gray-200 rounded-lg p-4">
-                                            <div class="flex items-center justify-between">
-                                                <div>
-                                                    <div class="text-sm font-medium text-gray-900">
-                                                        <?php echo ucfirst($status['status']); ?></div>
-                                                    <div class="text-2xl font-bold text-blue-600">
-                                                        <?php echo number_format($status['count']); ?></div>
-                                                </div>
-                                                <div class="text-right">
-                                                    <div class="text-sm text-gray-500">Total Amount</div>
-                                                    <div class="text-lg font-semibold">
-                                                        ₱<?php echo number_format($status['total_amount'], 0); ?></div>
-                                                </div>
-                                            </div>
+                            <div
+                                class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4 hover:shadow-md transition-shadow">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <div class="text-xs text-slate-500 mb-1">Total Claims</div>
+                                        <div class="text-2xl font-semibold"><?php echo $totalClaims; ?></div>
+                                    </div>
+                                    <div
+                                        class="w-10 h-10 bg-purple-100 dark:bg-purple-900/20 rounded-lg flex items-center justify-center">
+                                        <svg class="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none"
+                                            stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4">
+                                            </path>
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
+                            <div
+                                class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4 hover:shadow-md transition-shadow">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <div class="text-xs text-slate-500 mb-1">Pending Claims</div>
+                                        <div class="text-2xl font-semibold text-orange-600">
+                                            <?php echo $pendingClaims; ?>
                                         </div>
-                                    <?php endforeach; ?>
-                                </div>
-
-                                <!-- Provider Performance Metrics -->
-                                <div class="mb-6">
-                                    <h4 class="text-sm font-semibold text-gray-900 mb-3">Provider Performance</h4>
-                                    <div class="overflow-x-auto">
-                                        <table class="min-w-full text-sm">
-                                            <thead class="bg-gray-50">
-                                                <tr>
-                                                    <th class="px-3 py-2 text-left font-medium text-gray-900">Provider
-                                                    </th>
-                                                    <th class="px-3 py-2 text-left font-medium text-gray-900">Total
-                                                        Claims</th>
-                                                    <th class="px-3 py-2 text-left font-medium text-gray-900">Approved
-                                                    </th>
-                                                    <th class="px-3 py-2 text-left font-medium text-gray-900">Pending
-                                                    </th>
-                                                    <th class="px-3 py-2 text-left font-medium text-gray-900">Avg
-                                                        Processing Days</th>
-                                                    <th class="px-3 py-2 text-left font-medium text-gray-900">Avg Claim
-                                                        Amount</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody class="divide-y divide-gray-200">
-                                                <?php foreach ($providerMetrics as $metric): ?>
-                                                    <tr>
-                                                        <td class="px-3 py-2 font-medium">
-                                                            <?php echo htmlspecialchars($metric['provider_name']); ?></td>
-                                                        <td class="px-3 py-2">
-                                                            <?php echo number_format($metric['total_claims']); ?></td>
-                                                        <td class="px-3 py-2">
-                                                            <span
-                                                                class="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">
-                                                                <?php echo number_format($metric['approved_claims']); ?>
-                                                            </span>
-                                                        </td>
-                                                        <td class="px-3 py-2">
-                                                            <span
-                                                                class="px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded-full">
-                                                                <?php echo number_format($metric['pending_claims']); ?>
-                                                            </span>
-                                                        </td>
-                                                        <td class="px-3 py-2">
-                                                            <?php echo $metric['avg_processing_days'] ? number_format($metric['avg_processing_days'], 1) . ' days' : 'N/A'; ?>
-                                                        </td>
-                                                        <td class="px-3 py-2">
-                                                            ₱<?php echo number_format($metric['avg_claim_amount'], 0); ?>
-                                                        </td>
-                                                    </tr>
-                                                <?php endforeach; ?>
-                                            </tbody>
-                                        </table>
+                                    </div>
+                                    <div
+                                        class="w-10 h-10 bg-orange-100 dark:bg-orange-900/20 rounded-lg flex items-center justify-center">
+                                        <svg class="w-5 h-5 text-orange-600 dark:text-orange-400" fill="none"
+                                            stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- HMO Plans -->
+                        <!-- HMO Plans Overview -->
                         <div class="rounded-lg border border-[hsl(var(--border))] overflow-hidden">
-                            <div class="p-3 border-b border-[hsl(var(--border))] bg-[hsl(var(--secondary))]">
+                            <div class="p-4 border-b border-[hsl(var(--border))] bg-[hsl(var(--secondary))]">
                                 <div class="flex flex-col sm:flex-row gap-2 sm:items-center justify-between">
-                                    <div class="font-semibold">HMO Plans</div>
-                                    <div class="text-sm text-slate-500"><?php echo count($hmoPlans); ?> plans</div>
+                                    <div class="flex gap-2">
+                                        <h3 class="font-semibold">HMO Plans</h3>
+                                        <span
+                                            class="px-2 py-1 bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-400 text-xs rounded-full">
+                                            <?php echo $totalPlans; ?> plans
+                                        </span>
+                                    </div>
+                                    <button onclick="openCreatePlanModal()"
+                                        class="bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] px-3 py-1 rounded-md text-sm hover:opacity-95 transition-opacity">
+                                        Add Plan
+                                    </button>
                                 </div>
                             </div>
                             <div class="overflow-x-auto">
@@ -387,64 +302,103 @@ try {
                                             <th class="text-left px-3 py-2 font-semibold">Plan Name</th>
                                             <th class="text-left px-3 py-2 font-semibold">Provider</th>
                                             <th class="text-left px-3 py-2 font-semibold">Premium</th>
-                                            <th class="text-left px-3 py-2 font-semibold">Enrollments</th>
                                             <th class="text-left px-3 py-2 font-semibold">Coverage</th>
+                                            <th class="text-left px-3 py-2 font-semibold">Enrollments</th>
                                             <th class="text-left px-3 py-2 font-semibold">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <?php foreach ($hmoPlans as $plan): ?>
-                                            <tr
-                                                class="border-b border-[hsl(var(--border))] hover:bg-[hsl(var(--secondary))]">
-                                                <td class="px-3 py-3">
-                                                    <div class="font-medium">
-                                                        <?php echo htmlspecialchars($plan['plan_name']); ?>
-                                                    </div>
-                                                </td>
-                                                <td class="px-3 py-3">
-                                                    <div class="font-medium">
-                                                        <?php echo htmlspecialchars($plan['provider_name']); ?>
-                                                    </div>
-                                                    <div class="text-xs text-slate-500">
-                                                        <?php echo htmlspecialchars(substr($plan['contact_info'], 0, 30)) . '...'; ?>
-                                                    </div>
-                                                </td>
-                                                <td class="px-3 py-3">
-                                                    <div class="font-semibold">
-                                                        ₱<?php echo number_format($plan['premium_amount'], 2); ?></div>
-                                                    <div class="text-xs text-slate-500">per month</div>
-                                                </td>
-                                                <td class="px-3 py-3">
-                                                    <span class="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
-                                                        <?php echo $plan['enrollment_count']; ?> enrolled
-                                                    </span>
-                                                </td>
-                                                <td class="px-3 py-3">
-                                                    <div class="text-xs text-slate-600">
-                                                        <?php echo htmlspecialchars(substr($plan['coverage_details'], 0, 50)) . '...'; ?>
-                                                    </div>
-                                                </td>
-                                                <td class="px-3 py-3">
-                                                    <div class="flex gap-1">
-                                                        <button onclick="editPlan(<?php echo $plan['id']; ?>)"
-                                                            class="text-blue-600 hover:text-blue-800 text-xs">Edit</button>
-                                                        <button onclick="viewPlanDetails(<?php echo $plan['id']; ?>)"
-                                                            class="text-green-600 hover:text-green-800 text-xs">View</button>
+                                        <?php if (empty($hmoPlans)): ?>
+                                            <tr>
+                                                <td class="px-3 py-6 text-center text-slate-500" colspan="6">
+                                                    <div class="text-center py-10">
+                                                        <div class="text-sm font-medium">No HMO plans</div>
+                                                        <div class="text-xs text-slate-500 mt-1">Add HMO plans to get
+                                                            started.</div>
                                                     </div>
                                                 </td>
                                             </tr>
-                                        <?php endforeach; ?>
+                                        <?php else: ?>
+                                            <?php foreach ($hmoPlans as $plan): ?>
+                                                <?php
+                                                $enrollmentCount = count(array_filter($benefitsData, function ($benefit) use ($plan) {
+                                                    return $benefit['plan_id'] == $plan['id'];
+                                                }));
+                                                ?>
+                                                <tr
+                                                    class="border-t border-[hsl(var(--border))] hover:bg-[hsl(var(--accent))] transition-colors">
+                                                    <td class="px-3 py-3">
+                                                        <div class="font-medium text-slate-900 dark:text-slate-100">
+                                                            <?php echo htmlspecialchars($plan['plan_name']); ?>
+                                                        </div>
+                                                    </td>
+                                                    <td class="px-3 py-3 text-slate-600 dark:text-slate-300">
+                                                        <?php echo htmlspecialchars($plan['provider_name']); ?>
+                                                    </td>
+                                                    <td class="px-3 py-3 text-slate-600 dark:text-slate-300">
+                                                        ₱<?php echo number_format($plan['premium_amount'], 2); ?>
+                                                    </td>
+                                                    <td class="px-3 py-3 text-slate-600 dark:text-slate-300">
+                                                        <div class="max-w-xs truncate"
+                                                            title="<?php echo htmlspecialchars($plan['coverage_details']); ?>">
+                                                            <?php echo htmlspecialchars(substr($plan['coverage_details'], 0, 50)) . '...'; ?>
+                                                        </div>
+                                                    </td>
+                                                    <td class="px-3 py-3">
+                                                        <span
+                                                            class="px-2 py-1 bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-400 text-xs rounded-full">
+                                                            <?php echo $enrollmentCount; ?> enrolled
+                                                        </span>
+                                                    </td>
+                                                    <td class="px-3 py-3">
+                                                        <div class="flex items-center gap-1">
+                                                            <button
+                                                                class="p-1 text-slate-400 hover:text-blue-600 transition-colors"
+                                                                title="Edit">
+                                                                <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                                    viewBox="0 0 24 24">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                                        stroke-width="2"
+                                                                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z">
+                                                                    </path>
+                                                                </svg>
+                                                            </button>
+                                                            <button
+                                                                class="p-1 text-slate-400 hover:text-red-600 transition-colors"
+                                                                title="Delete">
+                                                                <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                                    viewBox="0 0 24 24">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                                        stroke-width="2"
+                                                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
+                                                                    </path>
+                                                                </svg>
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            <?php endforeach; ?>
+                                        <?php endif; ?>
                                     </tbody>
                                 </table>
                             </div>
                         </div>
 
-                        <!-- Recent Enrollments -->
+                        <!-- Benefits Enrollments -->
                         <div class="rounded-lg border border-[hsl(var(--border))] overflow-hidden">
-                            <div class="p-3 border-b border-[hsl(var(--border))] bg-[hsl(var(--secondary))]">
+                            <div class="p-4 border-b border-[hsl(var(--border))] bg-[hsl(var(--secondary))]">
                                 <div class="flex flex-col sm:flex-row gap-2 sm:items-center justify-between">
-                                    <div class="font-semibold">Recent Enrollments</div>
-                                    <div class="text-sm text-slate-500">Last 20 enrollments</div>
+                                    <div class="flex gap-2">
+                                        <h3 class="font-semibold">Employee Enrollments</h3>
+                                        <span
+                                            class="px-2 py-1 bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-400 text-xs rounded-full">
+                                            <?php echo $totalEnrollments; ?> active
+                                        </span>
+                                    </div>
+                                    <button onclick="openCreateEnrollmentModal()"
+                                        class="bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] px-3 py-1 rounded-md text-sm hover:opacity-95 transition-opacity">
+                                        Enroll Employee
+                                    </button>
                                 </div>
                             </div>
                             <div class="overflow-x-auto">
@@ -452,56 +406,63 @@ try {
                                     <thead class="bg-[hsl(var(--secondary))]">
                                         <tr>
                                             <th class="text-left px-3 py-2 font-semibold">Employee</th>
-                                            <th class="text-left px-3 py-2 font-semibold">Department</th>
                                             <th class="text-left px-3 py-2 font-semibold">Plan</th>
                                             <th class="text-left px-3 py-2 font-semibold">Provider</th>
+                                            <th class="text-left px-3 py-2 font-semibold">Premium</th>
                                             <th class="text-left px-3 py-2 font-semibold">Enrollment Date</th>
                                             <th class="text-left px-3 py-2 font-semibold">Status</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <?php if (empty($recentEnrollments)): ?>
+                                        <?php if (empty($benefitsData)): ?>
                                             <tr>
                                                 <td class="px-3 py-6 text-center text-slate-500" colspan="6">
-                                                    <div
-                                                        class="text-center py-10 border border-dashed border-[hsl(var(--border))] rounded-md">
+                                                    <div class="text-center py-10">
                                                         <div class="text-sm font-medium">No enrollments</div>
-                                                        <div class="text-xs text-slate-500 mt-1">Employees can enroll in
-                                                            benefit plans.</div>
+                                                        <div class="text-xs text-slate-500 mt-1">Enroll employees in benefit
+                                                            plans.</div>
                                                     </div>
                                                 </td>
                                             </tr>
                                         <?php else: ?>
-                                            <?php foreach ($recentEnrollments as $enrollment): ?>
+                                            <?php foreach (array_slice($benefitsData, 0, 10) as $benefit): ?>
                                                 <tr
-                                                    class="border-b border-[hsl(var(--border))] hover:bg-[hsl(var(--secondary))]">
+                                                    class="border-t border-[hsl(var(--border))] hover:bg-[hsl(var(--accent))] transition-colors">
                                                     <td class="px-3 py-3">
-                                                        <div>
-                                                            <div class="font-medium">
-                                                                <?php echo htmlspecialchars($enrollment['first_name'] . ' ' . $enrollment['last_name']); ?>
+                                                        <div class="flex items-center gap-3">
+                                                            <div
+                                                                class="w-8 h-8 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center">
+                                                                <span
+                                                                    class="text-xs font-semibold text-blue-600 dark:text-blue-400">
+                                                                    <?php echo strtoupper(substr($benefit['employee_name'], 0, 2)); ?>
+                                                                </span>
                                                             </div>
-                                                            <div class="text-xs text-slate-500">
-                                                                <?php echo htmlspecialchars($enrollment['employee_number']); ?>
+                                                            <div>
+                                                                <div class="font-medium text-slate-900 dark:text-slate-100">
+                                                                    <?php echo htmlspecialchars($benefit['employee_name']); ?>
+                                                                </div>
+                                                                <div class="text-xs text-slate-500">
+                                                                    <?php echo htmlspecialchars($benefit['employee_number']); ?>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </td>
-                                                    <td class="px-3 py-3">
-                                                        <?php echo htmlspecialchars($enrollment['department_name'] ?? 'N/A'); ?>
+                                                    <td class="px-3 py-3 text-slate-600 dark:text-slate-300">
+                                                        <?php echo htmlspecialchars($benefit['plan_name']); ?>
+                                                    </td>
+                                                    <td class="px-3 py-3 text-slate-600 dark:text-slate-300">
+                                                        <?php echo htmlspecialchars($benefit['provider_name']); ?>
+                                                    </td>
+                                                    <td class="px-3 py-3 text-slate-600 dark:text-slate-300">
+                                                        ₱<?php echo number_format($benefit['premium_amount'], 2); ?>
+                                                    </td>
+                                                    <td class="px-3 py-3 text-slate-600 dark:text-slate-300">
+                                                        <?php echo date('M j, Y', strtotime($benefit['enrollment_date'])); ?>
                                                     </td>
                                                     <td class="px-3 py-3">
-                                                        <?php echo htmlspecialchars($enrollment['plan_name']); ?>
-                                                    </td>
-                                                    <td class="px-3 py-3">
-                                                        <?php echo htmlspecialchars($enrollment['provider_name']); ?>
-                                                    </td>
-                                                    <td class="px-3 py-3">
-                                                        <?php echo date('M j, Y', strtotime($enrollment['enrollment_date'])); ?>
-                                                    </td>
-                                                    <td class="px-3 py-3">
-                                                        <span class="px-2 py-1 text-xs rounded-full <?php
-                                                        echo $enrollment['status'] === 'Active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800';
-                                                        ?>">
-                                                            <?php echo htmlspecialchars($enrollment['status']); ?>
+                                                        <span
+                                                            class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400">
+                                                            <?php echo htmlspecialchars($benefit['status']); ?>
                                                         </span>
                                                     </td>
                                                 </tr>
@@ -512,12 +473,32 @@ try {
                             </div>
                         </div>
 
-                        <!-- Recent Claims -->
+                        <!-- Benefit Claims -->
                         <div class="rounded-lg border border-[hsl(var(--border))] overflow-hidden">
-                            <div class="p-3 border-b border-[hsl(var(--border))] bg-[hsl(var(--secondary))]">
+                            <div class="p-4 border-b border-[hsl(var(--border))] bg-[hsl(var(--secondary))]">
                                 <div class="flex flex-col sm:flex-row gap-2 sm:items-center justify-between">
-                                    <div class="font-semibold">Recent Claims</div>
-                                    <div class="text-sm text-slate-500">Last 20 claims</div>
+                                    <div class="flex gap-2">
+                                        <h3 class="font-semibold">Benefit Claims</h3>
+                                        <span
+                                            class="px-2 py-1 bg-purple-100 dark:bg-purple-900/20 text-purple-800 dark:text-purple-400 text-xs rounded-full">
+                                            <?php echo $totalClaims; ?> total
+                                        </span>
+                                    </div>
+                                    <div class="flex gap-2">
+                                        <form method="get" class="flex gap-2">
+                                            <input type="hidden" name="page" value="benefits">
+                                            <select name="status"
+                                                class="px-3 py-1 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] text-sm"
+                                                onchange="this.form.submit()">
+                                                <option value="" <?php echo $statusFilter === '' ? 'selected' : ''; ?>>All
+                                                    Status</option>
+                                                <option value="Pending" <?php echo $statusFilter === 'Pending' ? 'selected' : ''; ?>>Pending</option>
+                                                <option value="Approved" <?php echo $statusFilter === 'Approved' ? 'selected' : ''; ?>>Approved</option>
+                                                <option value="Paid" <?php echo $statusFilter === 'Paid' ? 'selected' : ''; ?>>Paid</option>
+                                                <option value="Rejected" <?php echo $statusFilter === 'Rejected' ? 'selected' : ''; ?>>Rejected</option>
+                                            </select>
+                                        </form>
+                                    </div>
                                 </div>
                             </div>
                             <div class="overflow-x-auto">
@@ -526,20 +507,17 @@ try {
                                         <tr>
                                             <th class="text-left px-3 py-2 font-semibold">Employee</th>
                                             <th class="text-left px-3 py-2 font-semibold">Plan</th>
-                                            <th class="text-left px-3 py-2 font-semibold">Provider</th>
                                             <th class="text-left px-3 py-2 font-semibold">Claim Amount</th>
                                             <th class="text-left px-3 py-2 font-semibold">Claim Date</th>
-                                            <th class="text-left px-3 py-2 font-semibold">Days Pending</th>
                                             <th class="text-left px-3 py-2 font-semibold">Status</th>
                                             <th class="text-left px-3 py-2 font-semibold">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <?php if (empty($recentClaims)): ?>
+                                        <?php if (empty($benefitClaims)): ?>
                                             <tr>
-                                                <td class="px-3 py-6 text-center text-slate-500" colspan="7">
-                                                    <div
-                                                        class="text-center py-10 border border-dashed border-[hsl(var(--border))] rounded-md">
+                                                <td class="px-3 py-6 text-center text-slate-500" colspan="6">
+                                                    <div class="text-center py-10">
                                                         <div class="text-sm font-medium">No claims</div>
                                                         <div class="text-xs text-slate-500 mt-1">Claims will appear here
                                                             when submitted.</div>
@@ -549,58 +527,96 @@ try {
                                         <?php else: ?>
                                             <?php foreach ($recentClaims as $claim): ?>
                                                 <tr
-                                                    class="border-b border-[hsl(var(--border))] hover:bg-[hsl(var(--secondary))]">
+                                                    class="border-t border-[hsl(var(--border))] hover:bg-[hsl(var(--accent))] transition-colors">
                                                     <td class="px-3 py-3">
-                                                        <div>
-                                                            <div class="font-medium">
-                                                                <?php echo htmlspecialchars($claim['first_name'] . ' ' . $claim['last_name']); ?>
+                                                        <div class="flex items-center gap-3">
+                                                            <div
+                                                                class="w-8 h-8 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center">
+                                                                <span
+                                                                    class="text-xs font-semibold text-blue-600 dark:text-blue-400">
+                                                                    <?php echo strtoupper(substr($claim['employee_name'], 0, 2)); ?>
+                                                                </span>
                                                             </div>
-                                                            <div class="text-xs text-slate-500">
-                                                                <?php echo htmlspecialchars($claim['employee_number']); ?>
+                                                            <div>
+                                                                <div class="font-medium text-slate-900 dark:text-slate-100">
+                                                                    <?php echo htmlspecialchars($claim['employee_name']); ?>
+                                                                </div>
+                                                                <div class="text-xs text-slate-500">
+                                                                    <?php echo htmlspecialchars($claim['employee_number']); ?>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </td>
-                                                    <td class="px-3 py-3"><?php echo htmlspecialchars($claim['plan_name']); ?>
+                                                    <td class="px-3 py-3 text-slate-600 dark:text-slate-300">
+                                                        <?php echo htmlspecialchars($claim['plan_name']); ?>
                                                     </td>
-                                                    <td class="px-3 py-3">
-                                                        <?php echo htmlspecialchars($claim['provider_name']); ?>
+                                                    <td class="px-3 py-3 font-semibold text-slate-900 dark:text-slate-100">
+                                                        ₱<?php echo number_format($claim['claim_amount'], 2); ?>
                                                     </td>
-                                                    <td class="px-3 py-3">
-                                                        <div class="font-semibold">
-                                                            ₱<?php echo number_format($claim['claim_amount'], 2); ?></div>
-                                                    </td>
-                                                    <td class="px-3 py-3">
+                                                    <td class="px-3 py-3 text-slate-600 dark:text-slate-300">
                                                         <?php echo date('M j, Y', strtotime($claim['claim_date'])); ?>
                                                     </td>
                                                     <td class="px-3 py-3">
-                                                        <?php if ($claim['status'] === 'Pending'): ?>
-                                                            <span
-                                                                class="px-2 py-1 text-xs bg-orange-100 text-orange-800 rounded-full">
-                                                                <?php echo $claim['days_pending']; ?> days
-                                                            </span>
-                                                        <?php else: ?>
-                                                            <span class="text-xs text-gray-500">-</span>
-                                                        <?php endif; ?>
-                                                    </td>
-                                                    <td class="px-3 py-3">
-                                                        <span class="px-2 py-1 text-xs rounded-full <?php
-                                                        echo $claim['status'] === 'Paid' ? 'bg-green-100 text-green-800' :
-                                                            ($claim['status'] === 'Approved' ? 'bg-blue-100 text-blue-800' :
-                                                                ($claim['status'] === 'Pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'));
-                                                        ?>">
+                                                        <?php
+                                                        $statusColors = [
+                                                            'Pending' => 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400',
+                                                            'Approved' => 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400',
+                                                            'Paid' => 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400',
+                                                            'Rejected' => 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+                                                        ];
+                                                        $statusColor = $statusColors[$claim['status']] ?? 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400';
+                                                        ?>
+                                                        <span
+                                                            class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium <?php echo $statusColor; ?>">
                                                             <?php echo htmlspecialchars($claim['status']); ?>
                                                         </span>
                                                     </td>
                                                     <td class="px-3 py-3">
-                                                        <div class="flex gap-1">
+                                                        <div class="flex items-center gap-1">
+                                                            <button
+                                                                class="p-1 text-slate-400 hover:text-blue-600 transition-colors"
+                                                                title="View">
+                                                                <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                                    viewBox="0 0 24 24">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                                        stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z">
+                                                                    </path>
+                                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                                        stroke-width="2"
+                                                                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z">
+                                                                    </path>
+                                                                </svg>
+                                                            </button>
                                                             <?php if ($claim['status'] === 'Pending'): ?>
-                                                                <button onclick="approveClaim(<?php echo $claim['id']; ?>)"
-                                                                    class="text-green-600 hover:text-green-800 text-xs">Approve</button>
-                                                                <button onclick="rejectClaim(<?php echo $claim['id']; ?>)"
-                                                                    class="text-red-600 hover:text-red-800 text-xs">Reject</button>
+                                                                <form method="post" class="inline-block">
+                                                                    <input type="hidden" name="action" value="approve_claim">
+                                                                    <input type="hidden" name="claim_id"
+                                                                        value="<?php echo (int) $claim['id']; ?>">
+                                                                    <button type="submit"
+                                                                        class="p-1 text-slate-400 hover:text-green-600 transition-colors"
+                                                                        title="Approve">
+                                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                                            viewBox="0 0 24 24">
+                                                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                                                stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                                                        </svg>
+                                                                    </button>
+                                                                </form>
+                                                                <form method="post" class="inline-block">
+                                                                    <input type="hidden" name="action" value="reject_claim">
+                                                                    <input type="hidden" name="claim_id"
+                                                                        value="<?php echo (int) $claim['id']; ?>">
+                                                                    <button type="submit"
+                                                                        class="p-1 text-slate-400 hover:text-red-600 transition-colors"
+                                                                        title="Reject">
+                                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                                            viewBox="0 0 24 24">
+                                                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                                                stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                                                        </svg>
+                                                                    </button>
+                                                                </form>
                                                             <?php endif; ?>
-                                                            <button onclick="viewClaim(<?php echo $claim['id']; ?>)"
-                                                                class="text-blue-600 hover:text-blue-800 text-xs">View</button>
                                                         </div>
                                                     </td>
                                                 </tr>
@@ -610,168 +626,229 @@ try {
                                 </table>
                             </div>
                         </div>
+
+                        <!-- Claim Statistics -->
+                        <div class="grid lg:grid-cols-2 gap-4">
+                            <div
+                                class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] text-[hsl(var(--card-foreground))] shadow-sm">
+                                <div class="p-4 border-b border-[hsl(var(--border))] font-semibold">Claim Summary</div>
+                                <div class="p-4">
+                                    <div class="space-y-3">
+                                        <div class="flex justify-between">
+                                            <span class="text-sm text-slate-600 dark:text-slate-300">Total Claim
+                                                Amount</span>
+                                            <span
+                                                class="font-semibold">₱<?php echo number_format($totalClaimAmount, 2); ?></span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-sm text-slate-600 dark:text-slate-300">Paid Amount</span>
+                                            <span
+                                                class="font-semibold text-green-600">₱<?php echo number_format($totalPaidAmount, 2); ?></span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-sm text-slate-600 dark:text-slate-300">Pending
+                                                Amount</span>
+                                            <span
+                                                class="font-semibold text-orange-600">₱<?php echo number_format($totalClaimAmount - $totalPaidAmount, 2); ?></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div
+                                class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] text-[hsl(var(--card-foreground))] shadow-sm">
+                                <div class="p-4 border-b border-[hsl(var(--border))] font-semibold">Provider Network
+                                </div>
+                                <div class="p-4">
+                                    <?php if (empty($providers)): ?>
+                                        <div class="text-sm text-slate-500">No providers found</div>
+                                    <?php else: ?>
+                                        <div class="space-y-2">
+                                            <?php foreach (array_slice($providers, 0, 5) as $provider): ?>
+                                                <div
+                                                    class="flex items-center justify-between p-2 rounded border border-[hsl(var(--border))] hover:bg-[hsl(var(--accent))] transition-colors">
+                                                    <div class="font-medium text-slate-900 dark:text-slate-100">
+                                                        <?php echo htmlspecialchars($provider['provider_name']); ?>
+                                                    </div>
+                                                    <div class="text-xs text-slate-500">
+                                                        <?php echo count(array_filter($hmoPlans, function ($plan) use ($provider) {
+                                                            return $plan['provider_id'] == $provider['id'];
+                                                        })); ?>
+                                                        plans
+                                                    </div>
+                                                </div>
+                                            <?php endforeach; ?>
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        </div>
                     </section>
                 </main>
             </div>
         </div>
     </div>
 
-    <!-- New Enrollment Modal -->
-    <div id="enrollmentModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
-        <div class="flex items-center justify-center min-h-screen p-4">
-            <div class="bg-white rounded-lg p-6 w-full max-w-md">
-                <h3 class="text-lg font-semibold mb-4">New Benefit Enrollment</h3>
-                <form method="POST">
-                    <input type="hidden" name="action" value="add_enrollment">
-                    <div class="space-y-4">
-                        <div>
-                            <label class="block text-sm font-medium mb-1">Employee</label>
-                            <select name="employee_id" required
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                <option value="">Select Employee</option>
-                                <?php
-                                $stmt = $pdo->query("SELECT id, CONCAT(first_name, ' ', last_name) as full_name, employee_number FROM employees WHERE status = 'Active' ORDER BY first_name, last_name");
-                                $employees = $stmt->fetchAll();
-                                foreach ($employees as $emp): ?>
-                                    <option value="<?php echo $emp['id']; ?>">
-                                        <?php echo htmlspecialchars($emp['full_name'] . ' (' . $emp['employee_number'] . ')'); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium mb-1">HMO Plan</label>
-                            <select name="plan_id" required
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                <option value="">Select Plan</option>
-                                <?php foreach ($hmoPlans as $plan): ?>
-                                    <option value="<?php echo $plan['id']; ?>">
-                                        <?php echo htmlspecialchars($plan['plan_name'] . ' - ' . $plan['provider_name']); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium mb-1">Enrollment Date</label>
-                            <input type="date" name="enrollment_date" required
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        </div>
-                    </div>
-                    <div class="flex gap-2 mt-6">
-                        <button type="submit"
-                            class="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700">Enroll
-                            Employee</button>
-                        <button type="button" onclick="closeEnrollmentModal()"
-                            class="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-400">Cancel</button>
-                    </div>
-                </form>
+    <!-- Create HMO Plan Modal -->
+    <div id="createPlanModal"
+        class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-[hsl(var(--card))] rounded-lg shadow-xl max-w-lg w-full">
+            <div class="p-6 border-b border-[hsl(var(--border))]">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-lg font-semibold">Add New HMO Plan</h3>
+                    <button onclick="closeCreatePlanModal()"
+                        class="text-slate-400 hover:text-slate-600 transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
             </div>
+            <form method="POST" class="p-6 space-y-4">
+                <input type="hidden" name="action" value="create_hmo_plan">
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Plan Name *</label>
+                    <input type="text" name="plan_name" required
+                        class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Provider *</label>
+                    <select name="provider_id" required
+                        class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]">
+                        <option value="">Select Provider</option>
+                        <?php foreach ($providers as $provider): ?>
+                            <option value="<?php echo $provider['id']; ?>">
+                                <?php echo htmlspecialchars($provider['provider_name']); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Premium Amount
+                        *</label>
+                    <input type="number" name="premium_amount" step="0.01" min="0" required
+                        class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Coverage Details
+                        *</label>
+                    <textarea name="coverage_details" rows="4" required
+                        class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]"></textarea>
+                </div>
+
+                <div class="flex justify-end gap-3 pt-4">
+                    <button type="button" onclick="closeCreatePlanModal()"
+                        class="px-4 py-2 border border-[hsl(var(--border))] text-[hsl(var(--foreground))] rounded-md hover:bg-[hsl(var(--accent))] transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit"
+                        class="px-4 py-2 bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] rounded-md hover:opacity-95 transition-opacity">
+                        Create Plan
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Create Enrollment Modal -->
+    <div id="createEnrollmentModal"
+        class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-[hsl(var(--card))] rounded-lg shadow-xl max-w-lg w-full">
+            <div class="p-6 border-b border-[hsl(var(--border))]">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-lg font-semibold">Enroll Employee</h3>
+                    <button onclick="closeCreateEnrollmentModal()"
+                        class="text-slate-400 hover:text-slate-600 transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <form method="POST" class="p-6 space-y-4">
+                <input type="hidden" name="action" value="create_enrollment">
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Employee *</label>
+                    <select name="employee_id" required
+                        class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]">
+                        <option value="">Select Employee</option>
+                        <?php
+                        $allEmployees = $dbHelper->getEmployees(1000);
+                        foreach ($allEmployees as $emp):
+                            ?>
+                            <option value="<?php echo $emp['id']; ?>">
+                                <?php echo htmlspecialchars($emp['first_name'] . ' ' . $emp['last_name'] . ' (' . $emp['employee_number'] . ')'); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">HMO Plan *</label>
+                    <select name="plan_id" required
+                        class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]">
+                        <option value="">Select Plan</option>
+                        <?php foreach ($hmoPlans as $plan): ?>
+                            <option value="<?php echo $plan['id']; ?>">
+                                <?php echo htmlspecialchars($plan['plan_name'] . ' - ' . $plan['provider_name']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Enrollment Date
+                        *</label>
+                    <input type="date" name="enrollment_date" value="<?php echo date('Y-m-d'); ?>" required
+                        class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]">
+                </div>
+
+                <div class="flex justify-end gap-3 pt-4">
+                    <button type="button" onclick="closeCreateEnrollmentModal()"
+                        class="px-4 py-2 border border-[hsl(var(--border))] text-[hsl(var(--foreground))] rounded-md hover:bg-[hsl(var(--accent))] transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit"
+                        class="px-4 py-2 bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] rounded-md hover:opacity-95 transition-opacity">
+                        Enroll Employee
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 
     <script src="/HR4_COMPEN&INTELLI/shared/scripts.js"></script>
     <script>
-        function openEnrollmentModal() {
-            document.getElementById('enrollmentModal').classList.remove('hidden');
+        // Modal functions
+        function openCreatePlanModal() {
+            document.getElementById('createPlanModal').classList.remove('hidden');
         }
 
-        function closeEnrollmentModal() {
-            document.getElementById('enrollmentModal').classList.add('hidden');
+        function closeCreatePlanModal() {
+            document.getElementById('createPlanModal').classList.add('hidden');
         }
 
-        function openProviderModal() {
-            alert('Add provider functionality coming soon');
+        function openCreateEnrollmentModal() {
+            document.getElementById('createEnrollmentModal').classList.remove('hidden');
         }
 
-        function editPlan(id) {
-            alert('Edit plan ' + id);
+        function closeCreateEnrollmentModal() {
+            document.getElementById('createEnrollmentModal').classList.add('hidden');
         }
 
-        function viewPlanDetails(id) {
-            alert('View plan details ' + id);
-        }
-
-        function approveClaim(id) {
-            if (confirm('Are you sure you want to approve this claim?')) {
-                // Submit form to approve claim
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.innerHTML = `
-                    <input type="hidden" name="action" value="update_claim_status">
-                    <input type="hidden" name="claim_id" value="${id}">
-                    <input type="hidden" name="status" value="Approved">
-                `;
-                document.body.appendChild(form);
-                form.submit();
+        // Close modals when clicking outside
+        document.addEventListener('click', function (e) {
+            if (e.target.classList.contains('fixed')) {
+                closeCreatePlanModal();
+                closeCreateEnrollmentModal();
             }
-        }
-
-        function rejectClaim(id) {
-            if (confirm('Are you sure you want to reject this claim?')) {
-                // Submit form to reject claim
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.innerHTML = `
-                    <input type="hidden" name="action" value="update_claim_status">
-                    <input type="hidden" name="claim_id" value="${id}">
-                    <input type="hidden" name="status" value="Rejected">
-                `;
-                document.body.appendChild(form);
-                form.submit();
-            }
-        }
-
-        function viewClaim(id) {
-            alert('View claim ' + id);
-        }
-
-        function exportBenefits() {
-            alert('Export benefits functionality coming soon');
-        }
-
-        // Provider Management Functions
-        function editProvider(id) {
-            alert('Edit provider ' + id + ' - This would open a form to edit provider details');
-        }
-
-        function viewProviderDetails(id) {
-            alert('Provider details ' + id + ' - This would show detailed provider information and contact details');
-        }
-
-        function viewProviderPerformance(id) {
-            alert('Provider performance ' + id + ' - This would show performance metrics and claim processing statistics');
-        }
-
-        // Enhanced Claims Processing Functions
-        function processClaim(claimId) {
-            if (confirm('Process this claim?')) {
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.innerHTML = `
-                    <input type="hidden" name="action" value="update_claim_status">
-                    <input type="hidden" name="claim_id" value="${claimId}">
-                    <input type="hidden" name="status" value="Approved">
-                `;
-                document.body.appendChild(form);
-                form.submit();
-            }
-        }
-
-        function bulkProcessClaims() {
-            alert('Bulk claims processing - Select multiple claims to process at once');
-        }
-
-        function generateClaimsReport() {
-            alert('Generate claims report - Create detailed reports on claims processing and provider performance');
-        }
-
-        function openProviderManagement() {
-            alert('Provider management - Add new providers, manage contracts, and track performance');
-        }
-
-        function openClaimsAnalytics() {
-            alert('Claims analytics - Analyze claims trends, processing times, and provider performance');
-        }
+        });
     </script>
 </body>
 

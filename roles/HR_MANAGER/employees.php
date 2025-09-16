@@ -2,137 +2,140 @@
 // HR Manager Employee Management Page
 include_once __DIR__ . '/../../shared/header.php';
 include_once __DIR__ . '/../../shared/sidebar.php';
+include_once __DIR__ . '/../../shared/database_helper.php';
 include_once __DIR__ . '/../../routing/rbac.php';
-include_once __DIR__ . '/../../config/database.php';
 
 $activeId = 'employees';
 $sidebarItems = $SIDEBAR_ITEMS[$user['role']] ?? [];
 
-// Handle form submissions
+// Initialize database helper
+$dbHelper = new DatabaseHelper();
+
+// Handle CRUD operations
+$message = '';
+$messageType = '';
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($_POST['action'])) {
-        switch ($_POST['action']) {
-            case 'add_employee':
-                try {
-                    $pdo->beginTransaction();
+    $action = $_POST['action'] ?? '';
 
-                    // Insert employee
-                    $stmt = $pdo->prepare("INSERT INTO employees (employee_number, first_name, last_name, department_id, position_id, hire_date, status) VALUES (?, ?, ?, ?, ?, ?, ?)");
-                    $stmt->execute([
-                        $_POST['employee_number'],
-                        $_POST['first_name'],
-                        $_POST['last_name'],
-                        $_POST['department_id'],
-                        $_POST['position_id'],
-                        $_POST['hire_date'],
-                        'Active'
-                    ]);
-                    $employeeId = $pdo->lastInsertId();
+    if ($action === 'create_employee') {
+        try {
+            $employeeNumber = $_POST['employee_number'] ?? '';
+            $firstName = $_POST['first_name'] ?? '';
+            $lastName = $_POST['last_name'] ?? '';
+            $departmentId = intval($_POST['department_id'] ?? 0);
+            $positionId = intval($_POST['position_id'] ?? 0);
+            $hireDate = $_POST['hire_date'] ?? '';
+            $email = $_POST['email'] ?? '';
+            $contactNumber = $_POST['contact_number'] ?? '';
+            $address = $_POST['address'] ?? '';
+            $birthDate = $_POST['birth_date'] ?? '';
+            $gender = $_POST['gender'] ?? '';
+            $civilStatus = $_POST['civil_status'] ?? '';
+            $employmentType = $_POST['employment_type'] ?? '';
 
-                    // Insert employee details
-                    $stmt = $pdo->prepare("INSERT INTO employee_details (employee_id, birth_date, gender, civil_status, contact_number, email, address, emergency_contact_name, emergency_contact_number, sss_no, philhealth_no, pagibig_no, tin_no, employment_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-                    $stmt->execute([
-                        $employeeId,
-                        $_POST['birth_date'],
-                        $_POST['gender'],
-                        $_POST['civil_status'],
-                        $_POST['contact_number'],
-                        $_POST['email'],
-                        $_POST['address'],
-                        $_POST['emergency_contact_name'],
-                        $_POST['emergency_contact_number'],
-                        $_POST['sss_no'],
-                        $_POST['philhealth_no'],
-                        $_POST['pagibig_no'],
-                        $_POST['tin_no'],
-                        $_POST['employment_type']
-                    ]);
+            // Insert employee
+            $dbHelper->query("
+                INSERT INTO employees (employee_number, first_name, last_name, department_id, position_id, hire_date, status) 
+                VALUES (?, ?, ?, ?, ?, ?, 'Active')
+            ", [$employeeNumber, $firstName, $lastName, $departmentId, $positionId, $hireDate]);
 
-                    // Create user account
-                    $stmt = $pdo->prepare("INSERT INTO users (username, password_hash, role_id, employee_id) VALUES (?, ?, ?, ?)");
-                    $stmt->execute([
-                        strtolower($_POST['first_name'] . '.' . $_POST['last_name']),
-                        password_hash('password123', PASSWORD_DEFAULT),
-                        6, // Hospital Employee role
-                        $employeeId
-                    ]);
+            $employeeId = $dbHelper->fetchOne("SELECT LAST_INSERT_ID() as id")['id'];
 
-                    $pdo->commit();
-                    $success = "Employee added successfully with user account!";
-                } catch (PDOException $e) {
-                    $pdo->rollBack();
-                    $error = "Error adding employee: " . $e->getMessage();
-                }
-                break;
+            // Insert employee details
+            $dbHelper->query("
+                INSERT INTO employee_details (employee_id, birth_date, gender, civil_status, contact_number, email, address, employment_type) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ", [$employeeId, $birthDate, $gender, $civilStatus, $contactNumber, $email, $address, $employmentType]);
 
-            case 'update_status':
-                try {
-                    $stmt = $pdo->prepare("UPDATE employees SET status = ? WHERE id = ?");
-                    $stmt->execute([$_POST['status'], $_POST['employee_id']]);
-                    $success = "Employee status updated successfully!";
-                } catch (PDOException $e) {
-                    $error = "Error updating employee: " . $e->getMessage();
-                }
-                break;
+            $message = 'Employee created successfully!';
+            $messageType = 'success';
+        } catch (Exception $e) {
+            $message = 'Error creating employee: ' . $e->getMessage();
+            $messageType = 'error';
+        }
+    } elseif ($action === 'update_employee') {
+        try {
+            $employeeId = intval($_POST['employee_id'] ?? 0);
+            $firstName = $_POST['first_name'] ?? '';
+            $lastName = $_POST['last_name'] ?? '';
+            $departmentId = intval($_POST['department_id'] ?? 0);
+            $positionId = intval($_POST['position_id'] ?? 0);
+            $hireDate = $_POST['hire_date'] ?? '';
+            $email = $_POST['email'] ?? '';
+            $contactNumber = $_POST['contact_number'] ?? '';
+            $address = $_POST['address'] ?? '';
+            $birthDate = $_POST['birth_date'] ?? '';
+            $gender = $_POST['gender'] ?? '';
+            $civilStatus = $_POST['civil_status'] ?? '';
+            $employmentType = $_POST['employment_type'] ?? '';
 
-            case 'onboard_employee':
-                try {
-                    $stmt = $pdo->prepare("UPDATE employees SET status = 'Active' WHERE id = ?");
-                    $stmt->execute([$_POST['employee_id']]);
-                    $success = "Employee onboarded successfully!";
-                } catch (PDOException $e) {
-                    $error = "Error onboarding employee: " . $e->getMessage();
-                }
-                break;
+            // Update employee
+            $dbHelper->query("
+                UPDATE employees 
+                SET first_name = ?, last_name = ?, department_id = ?, position_id = ?, hire_date = ?
+                WHERE id = ?
+            ", [$firstName, $lastName, $departmentId, $positionId, $hireDate, $employeeId]);
 
-            case 'offboard_employee':
-                try {
-                    $stmt = $pdo->prepare("UPDATE employees SET status = 'Resigned' WHERE id = ?");
-                    $stmt->execute([$_POST['employee_id']]);
-                    $success = "Employee offboarded successfully!";
-                } catch (PDOException $e) {
-                    $error = "Error offboarding employee: " . $e->getMessage();
-                }
-                break;
+            // Update employee details
+            $dbHelper->query("
+                UPDATE employee_details 
+                SET birth_date = ?, gender = ?, civil_status = ?, contact_number = ?, email = ?, address = ?, employment_type = ?
+                WHERE employee_id = ?
+            ", [$birthDate, $gender, $civilStatus, $contactNumber, $email, $address, $employmentType, $employeeId]);
+
+            $message = 'Employee updated successfully!';
+            $messageType = 'success';
+        } catch (Exception $e) {
+            $message = 'Error updating employee: ' . $e->getMessage();
+            $messageType = 'error';
+        }
+    } elseif ($action === 'delete_employee') {
+        try {
+            $employeeId = intval($_POST['employee_id'] ?? 0);
+            $dbHelper->deactivateEmployeeById($employeeId);
+            $message = 'Employee deactivated successfully!';
+            $messageType = 'success';
+        } catch (Exception $e) {
+            $message = 'Error deactivating employee: ' . $e->getMessage();
+            $messageType = 'error';
         }
     }
 }
 
-// Fetch employees with related data
-try {
-    $stmt = $pdo->query("SELECT e.*, d.department_name, p.position_title, sg.grade_level, sg.min_salary, sg.max_salary,
-                        ed.birth_date, ed.gender, ed.civil_status, ed.contact_number, ed.email, ed.employment_type,
-                        u.username, u.id as user_id
-                        FROM employees e
-                        LEFT JOIN departments d ON e.department_id = d.id
-                        LEFT JOIN positions p ON e.position_id = p.id
-                        LEFT JOIN salary_grades sg ON p.salary_grade_id = sg.id
-                        LEFT JOIN employee_details ed ON e.id = ed.employee_id
-                        LEFT JOIN users u ON e.id = u.employee_id
-                        ORDER BY e.last_name, e.first_name");
-    $employees = $stmt->fetchAll();
+// Get search parameters
+$search = $_GET['search'] ?? '';
+$page = max(1, intval($_GET['p'] ?? 1));
+$limit = 20;
+$offset = ($page - 1) * $limit;
 
-    // Fetch departments and positions for forms
-    $stmt = $pdo->query("SELECT * FROM departments ORDER BY department_name");
-    $departments = $stmt->fetchAll();
+// Department filter
+$departmentId = isset($_GET['dept']) ? intval($_GET['dept']) : null;
 
-    $stmt = $pdo->query("SELECT * FROM positions ORDER BY position_title");
-    $positions = $stmt->fetchAll();
+// Get employees data
+$employees = $dbHelper->getEmployees($limit, $offset, $search, $departmentId);
 
-    // Fetch onboarding/offboarding statistics
-    $onboardingStats = $pdo->query("SELECT 
-        COUNT(*) as total_employees,
-        SUM(CASE WHEN status = 'Active' THEN 1 ELSE 0 END) as active_employees,
-        SUM(CASE WHEN hire_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY) THEN 1 ELSE 0 END) as new_hires_30_days,
-        SUM(CASE WHEN status = 'Resigned' AND resignation_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY) THEN 1 ELSE 0 END) as resignations_30_days
-        FROM employees")->fetch();
-
-} catch (PDOException $e) {
-    $employees = [];
-    $departments = [];
-    $positions = [];
-    $onboardingStats = ['total_employees' => 0, 'active_employees' => 0, 'new_hires_30_days' => 0, 'resignations_30_days' => 0];
+// Total for pagination (respect filters)
+$countSql = "SELECT COUNT(*) as count FROM employees e WHERE e.status = 'Active'";
+$countParams = [];
+if ($search) {
+    $countSql .= " AND (e.first_name LIKE ? OR e.last_name LIKE ? OR e.employee_number LIKE ?)";
+    $countParams = array_merge($countParams, ["%$search%", "%$search%", "%$search%"]);
 }
+if ($departmentId) {
+    $countSql .= " AND e.department_id = ?";
+    $countParams[] = $departmentId;
+}
+$totalEmployees = $dbHelper->fetchOne($countSql, $countParams)['count'] ?? 0;
+
+// Get departments for filter
+$departments = $dbHelper->getDepartments();
+
+// Get positions
+$positions = $dbHelper->getPositions();
+
+// Get salary grades for positions
+$salaryGrades = $dbHelper->fetchAll("SELECT * FROM salary_grades ORDER BY grade_level");
 ?>
 
 <!DOCTYPE html>
@@ -160,489 +163,587 @@ try {
                             <p class="text-xs text-slate-500 mt-1">Directory, profiles, onboarding and offboarding</p>
                         </div>
 
-                        <?php if (isset($success)): ?>
-                            <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
-                                <?php echo htmlspecialchars($success); ?>
-                            </div>
-                        <?php endif; ?>
-
-                        <?php if (isset($error)): ?>
-                            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-                                <?php echo htmlspecialchars($error); ?>
-                            </div>
-                        <?php endif; ?>
-
-                        <!-- Onboarding Statistics -->
-                        <div class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">
-                            <div class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
-                                <div class="text-xs text-slate-500 mb-1">Total Employees</div>
-                                <div class="text-2xl font-semibold">
-                                    <?php echo number_format($onboardingStats['total_employees']); ?></div>
-                                <div class="text-xs text-blue-600 mt-1">All time</div>
-                            </div>
-                            <div class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
-                                <div class="text-xs text-slate-500 mb-1">Active Employees</div>
-                                <div class="text-2xl font-semibold">
-                                    <?php echo number_format($onboardingStats['active_employees']); ?></div>
-                                <div class="text-xs text-green-600 mt-1">Currently working</div>
-                            </div>
-                            <div class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
-                                <div class="text-xs text-slate-500 mb-1">New Hires (30 days)</div>
-                                <div class="text-2xl font-semibold">
-                                    <?php echo number_format($onboardingStats['new_hires_30_days']); ?></div>
-                                <div class="text-xs text-purple-600 mt-1">Recent additions</div>
-                            </div>
-                            <div class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
-                                <div class="text-xs text-slate-500 mb-1">Resignations (30 days)</div>
-                                <div class="text-2xl font-semibold">
-                                    <?php echo number_format($onboardingStats['resignations_30_days']); ?></div>
-                                <div class="text-xs text-orange-600 mt-1">Recent departures</div>
-                            </div>
-                        </div>
-
-                        <!-- Quick Actions -->
-                        <div class="flex flex-wrap gap-2">
-                            <button onclick="openAddModal()"
-                                class="bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] shadow hover:opacity-95 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-9 px-3">
-                                Add Employee
-                            </button>
-                            <button onclick="openOnboardingModal()"
-                                class="bg-green-600 text-white shadow hover:opacity-95 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-9 px-3">
-                                Onboard Employee
-                            </button>
-                            <button onclick="openOffboardingModal()"
-                                class="bg-red-600 text-white shadow hover:opacity-95 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-9 px-3">
-                                Offboard Employee
-                            </button>
-                            <button onclick="exportEmployees()"
-                                class="bg-slate-600 text-white shadow hover:opacity-95 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-9 px-3">
-                                Export Data
-                            </button>
-                            <button onclick="bulkUpdate()"
-                                class="bg-orange-600 text-white shadow hover:opacity-95 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-9 px-3">
-                                Bulk Update
-                            </button>
-                        </div>
-
-                        <!-- Employee Directory -->
-                        <div class="rounded-lg border border-[hsl(var(--border))] overflow-hidden">
-                            <div class="p-3 border-b border-[hsl(var(--border))] bg-[hsl(var(--secondary))]">
-                                <div class="flex flex-col sm:flex-row gap-2 sm:items-center justify-between">
-                                    <div class="flex gap-2">
-                                        <input type="text" placeholder="Search employees..."
-                                            class="px-3 py-1 text-sm border border-[hsl(var(--border))] rounded-md focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]"
-                                            id="searchInput">
-                                        <select
-                                            class="px-3 py-1 text-sm border border-[hsl(var(--border))] rounded-md focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]"
-                                            id="statusFilter">
-                                            <option value="">All Status</option>
-                                            <option value="Active">Active</option>
-                                            <option value="Inactive">Inactive</option>
-                                            <option value="Resigned">Resigned</option>
-                                            <option value="Terminated">Terminated</option>
-                                            <option value="Retired">Retired</option>
-                                        </select>
-                                    </div>
-                                    <div class="text-sm text-slate-500">
-                                        <?php echo count($employees); ?> employees
+                        <!-- Search and Filters -->
+                        <div class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
+                            <div class="flex flex-col sm:flex-row gap-4">
+                                <div class="flex-1">
+                                    <div class="relative">
+                                        <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400"
+                                            fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                        </svg>
+                                        <input type="text" id="searchInput" placeholder="Search employees..."
+                                            value="<?php echo htmlspecialchars($search); ?>"
+                                            class="w-full pl-10 pr-4 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]">
                                     </div>
                                 </div>
+                                <div class="flex gap-2">
+                                    <form method="get" class="flex gap-2">
+                                        <input type="hidden" name="page" value="employees">
+                                        <input type="hidden" name="search"
+                                            value="<?php echo htmlspecialchars($search); ?>">
+                                        <select name="dept"
+                                            class="px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]"
+                                            onchange="this.form.submit()">
+                                            <option value="">All Departments</option>
+                                            <?php foreach ($departments as $dept): ?>
+                                                <option value="<?php echo $dept['id']; ?>" <?php echo ($departmentId === (int) $dept['id']) ? 'selected' : ''; ?>>
+                                                    <?php echo htmlspecialchars($dept['department_name']); ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </form>
+                                    <button onclick="openCreateModal()"
+                                        class="bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] px-4 py-2 rounded-md hover:opacity-95 transition-opacity">
+                                        Add Employee
+                                    </button>
+                                </div>
                             </div>
+                        </div>
+
+                        <!-- Message Display -->
+                        <?php if ($message): ?>
+                            <div
+                                class="rounded-lg border border-[hsl(var(--border))] p-4 <?php echo $messageType === 'success' ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'; ?>">
+                                <div class="flex items-center gap-2">
+                                    <svg class="w-5 h-5 <?php echo $messageType === 'success' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'; ?>"
+                                        fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <?php if ($messageType === 'success'): ?>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M5 13l4 4L19 7"></path>
+                                        <?php else: ?>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M6 18L18 6M6 6l12 12"></path>
+                                        <?php endif; ?>
+                                    </svg>
+                                    <span
+                                        class="text-sm font-medium <?php echo $messageType === 'success' ? 'text-green-800 dark:text-green-200' : 'text-red-800 dark:text-red-200'; ?>">
+                                        <?php echo htmlspecialchars($message); ?>
+                                    </span>
+                                </div>
+                            </div>
+                        <?php endif; ?>
+
+                        <!-- Employee Stats -->
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
+                                <div class="text-xs text-slate-500 mb-1">Total Employees</div>
+                                <div class="text-2xl font-semibold"><?php echo number_format($totalEmployees); ?></div>
+                            </div>
+                            <div class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
+                                <div class="text-xs text-slate-500 mb-1">Active</div>
+                                <div class="text-2xl font-semibold text-green-600">
+                                    <?php echo number_format($totalEmployees); ?>
+                                </div>
+                            </div>
+                            <div class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
+                                <div class="text-xs text-slate-500 mb-1">Departments</div>
+                                <div class="text-2xl font-semibold"><?php echo count($departments); ?></div>
+                            </div>
+                            <div class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
+                                <div class="text-xs text-slate-500 mb-1">Positions</div>
+                                <div class="text-2xl font-semibold"><?php echo count($positions); ?></div>
+                            </div>
+                        </div>
+
+                        <!-- Employee Table -->
+                        <div class="rounded-lg border border-[hsl(var(--border))] overflow-hidden">
                             <div class="overflow-x-auto">
                                 <table class="min-w-full text-sm">
                                     <thead class="bg-[hsl(var(--secondary))]">
                                         <tr>
                                             <th class="text-left px-3 py-2 font-semibold">Employee</th>
-                                            <th class="text-left px-3 py-2 font-semibold">Contact</th>
                                             <th class="text-left px-3 py-2 font-semibold">Department</th>
                                             <th class="text-left px-3 py-2 font-semibold">Position</th>
-                                            <th class="text-left px-3 py-2 font-semibold">Grade</th>
-                                            <th class="text-left px-3 py-2 font-semibold">Hire Date</th>
+                                            <th class="text-left px-3 py-2 font-semibold">Contact</th>
                                             <th class="text-left px-3 py-2 font-semibold">Status</th>
                                             <th class="text-left px-3 py-2 font-semibold">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <?php foreach ($employees as $emp): ?>
-                                            <tr
-                                                class="border-b border-[hsl(var(--border))] hover:bg-[hsl(var(--secondary))]">
-                                                <td class="px-3 py-3">
-                                                    <div>
-                                                        <div class="font-medium">
-                                                            <?php echo htmlspecialchars($emp['first_name'] . ' ' . $emp['last_name']); ?>
-                                                        </div>
-                                                        <div class="text-xs text-slate-500">
-                                                            <?php echo htmlspecialchars($emp['employee_number']); ?>
-                                                        </div>
-                                                        <div class="text-xs text-slate-400">
-                                                            <?php echo htmlspecialchars($emp['employment_type'] ?? 'N/A'); ?>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td class="px-3 py-3">
-                                                    <div>
-                                                        <div class="text-sm">
-                                                            <?php echo htmlspecialchars($emp['email'] ?? 'N/A'); ?></div>
-                                                        <div class="text-xs text-slate-500">
-                                                            <?php echo htmlspecialchars($emp['contact_number'] ?? 'N/A'); ?>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td class="px-3 py-3">
-                                                    <?php echo htmlspecialchars($emp['department_name'] ?? 'N/A'); ?>
-                                                </td>
-                                                <td class="px-3 py-3">
-                                                    <div>
-                                                        <div class="text-sm">
-                                                            <?php echo htmlspecialchars($emp['position_title'] ?? 'N/A'); ?>
-                                                        </div>
-                                                        <?php if ($emp['min_salary'] && $emp['max_salary']): ?>
-                                                            <div class="text-xs text-slate-500">
-                                                                ₱<?php echo number_format($emp['min_salary'], 0); ?> -
-                                                                ₱<?php echo number_format($emp['max_salary'], 0); ?>
-                                                            </div>
-                                                        <?php endif; ?>
-                                                    </div>
-                                                </td>
-                                                <td class="px-3 py-3">
-                                                    <span
-                                                        class="px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded-full">
-                                                        <?php echo htmlspecialchars($emp['grade_level'] ?? 'N/A'); ?>
-                                                    </span>
-                                                </td>
-                                                <td class="px-3 py-3">
-                                                    <div class="text-sm">
-                                                        <?php echo date('M j, Y', strtotime($emp['hire_date'])); ?></div>
-                                                    <div class="text-xs text-slate-500">
-                                                        <?php
-                                                        $years = floor((time() - strtotime($emp['hire_date'])) / (365.25 * 24 * 60 * 60));
-                                                        echo $years . ' year' . ($years != 1 ? 's' : '') . ' experience';
-                                                        ?>
-                                                    </div>
-                                                </td>
-                                                <td class="px-3 py-3">
-                                                    <span class="px-2 py-1 text-xs rounded-full <?php
-                                                    echo $emp['status'] === 'Active' ? 'bg-green-100 text-green-800' :
-                                                        ($emp['status'] === 'Inactive' ? 'bg-gray-100 text-gray-800' :
-                                                            ($emp['status'] === 'Resigned' ? 'bg-yellow-100 text-yellow-800' :
-                                                                ($emp['status'] === 'Terminated' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800')));
-                                                    ?>">
-                                                        <?php echo htmlspecialchars($emp['status']); ?>
-                                                    </span>
-                                                </td>
-                                                <td class="px-3 py-3">
-                                                    <div class="flex gap-1 flex-wrap">
-                                                        <button onclick="viewEmployee(<?php echo $emp['id']; ?>)"
-                                                            class="text-blue-600 hover:text-blue-800 text-xs px-2 py-1 rounded hover:bg-blue-50">View</button>
-                                                        <button onclick="editEmployee(<?php echo $emp['id']; ?>)"
-                                                            class="text-green-600 hover:text-green-800 text-xs px-2 py-1 rounded hover:bg-green-50">Edit</button>
-                                                        <button onclick="viewProfile(<?php echo $emp['id']; ?>)"
-                                                            class="text-purple-600 hover:text-purple-800 text-xs px-2 py-1 rounded hover:bg-purple-50">Profile</button>
-                                                        <?php if ($emp['status'] === 'Active'): ?>
-                                                            <button onclick="offboardEmployee(<?php echo $emp['id']; ?>)"
-                                                                class="text-red-600 hover:text-red-800 text-xs px-2 py-1 rounded hover:bg-red-50">Offboard</button>
-                                                        <?php elseif ($emp['status'] === 'Inactive'): ?>
-                                                            <button onclick="onboardEmployee(<?php echo $emp['id']; ?>)"
-                                                                class="text-green-600 hover:text-green-800 text-xs px-2 py-1 rounded hover:bg-green-50">Onboard</button>
-                                                        <?php endif; ?>
+                                        <?php if (empty($employees)): ?>
+                                            <tr>
+                                                <td class="px-3 py-6 text-center text-slate-500" colspan="6">
+                                                    <div class="text-center py-10">
+                                                        <div class="text-sm font-medium">No employees found</div>
+                                                        <div class="text-xs text-slate-500 mt-1">Add employees to get
+                                                            started.</div>
                                                     </div>
                                                 </td>
                                             </tr>
-                                        <?php endforeach; ?>
+                                        <?php else: ?>
+                                            <?php foreach ($employees as $employee): ?>
+                                                <tr
+                                                    class="border-t border-[hsl(var(--border))] hover:bg-[hsl(var(--accent))] transition-colors">
+                                                    <td class="px-3 py-3">
+                                                        <div class="flex items-center gap-3">
+                                                            <div
+                                                                class="w-8 h-8 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center">
+                                                                <span
+                                                                    class="text-xs font-semibold text-blue-600 dark:text-blue-400">
+                                                                    <?php echo strtoupper(substr($employee['first_name'], 0, 1) . substr($employee['last_name'], 0, 1)); ?>
+                                                                </span>
+                                                            </div>
+                                                            <div>
+                                                                <div class="font-medium text-slate-900 dark:text-slate-100">
+                                                                    <?php echo htmlspecialchars($employee['first_name'] . ' ' . $employee['last_name']); ?>
+                                                                </div>
+                                                                <div class="text-xs text-slate-500">
+                                                                    <?php echo htmlspecialchars($employee['employee_number']); ?>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td class="px-3 py-3 text-slate-600 dark:text-slate-300">
+                                                        <?php echo htmlspecialchars($employee['department_name'] ?? 'N/A'); ?>
+                                                    </td>
+                                                    <td class="px-3 py-3 text-slate-600 dark:text-slate-300">
+                                                        <?php echo htmlspecialchars($employee['position_title'] ?? 'N/A'); ?>
+                                                    </td>
+                                                    <td class="px-3 py-3 text-slate-600 dark:text-slate-300">
+                                                        <div class="text-xs">
+                                                            <?php echo htmlspecialchars($employee['email'] ?? 'N/A'); ?>
+                                                        </div>
+                                                        <div class="text-xs text-slate-500">
+                                                            <?php echo htmlspecialchars($employee['contact_number'] ?? 'N/A'); ?>
+                                                        </div>
+                                                    </td>
+                                                    <td class="px-3 py-3">
+                                                        <span
+                                                            class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400">
+                                                            <?php echo htmlspecialchars($employee['status']); ?>
+                                                        </span>
+                                                    </td>
+                                                    <td class="px-3 py-3">
+                                                        <div class="flex items-center gap-1">
+                                                            <a href="?page=employees&action=view&id=<?php echo (int) $employee['id']; ?>"
+                                                                class="p-1 text-slate-400 hover:text-blue-600 transition-colors"
+                                                                title="View">
+                                                                <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                                    viewBox="0 0 24 24">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                                        stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z">
+                                                                    </path>
+                                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                                        stroke-width="2"
+                                                                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z">
+                                                                    </path>
+                                                                </svg>
+                                                            </a>
+                                                            <button onclick="openEditModal(<?php echo (int) $employee['id']; ?>, {
+                                                                first_name: '<?php echo htmlspecialchars($employee['first_name']); ?>',
+                                                                last_name: '<?php echo htmlspecialchars($employee['last_name']); ?>',
+                                                                department_id: '<?php echo (int) $employee['department_id']; ?>',
+                                                                position_id: '<?php echo (int) $employee['position_id']; ?>',
+                                                                email: '<?php echo htmlspecialchars($employee['email'] ?? ''); ?>',
+                                                                contact_number: '<?php echo htmlspecialchars($employee['contact_number'] ?? ''); ?>',
+                                                                address: '<?php echo htmlspecialchars($employee['address'] ?? ''); ?>',
+                                                                birth_date: '<?php echo htmlspecialchars($employee['birth_date'] ?? ''); ?>',
+                                                                gender: '<?php echo htmlspecialchars($employee['gender'] ?? ''); ?>',
+                                                                civil_status: '<?php echo htmlspecialchars($employee['civil_status'] ?? ''); ?>',
+                                                                employment_type: '<?php echo htmlspecialchars($employee['employment_type'] ?? ''); ?>'
+                                                            })"
+                                                                class="p-1 text-slate-400 hover:text-green-600 transition-colors"
+                                                                title="Edit">
+                                                                <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                                    viewBox="0 0 24 24">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                                        stroke-width="2"
+                                                                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z">
+                                                                    </path>
+                                                                </svg>
+                                                            </button>
+                                                            <button
+                                                                onclick="openDeleteModal(<?php echo (int) $employee['id']; ?>, '<?php echo htmlspecialchars($employee['first_name'] . ' ' . $employee['last_name']); ?>')"
+                                                                class="p-1 text-slate-400 hover:text-red-600 transition-colors"
+                                                                title="Deactivate">
+                                                                <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                                    viewBox="0 0 24 24">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                                        stroke-width="2"
+                                                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
+                                                                    </path>
+                                                                </svg>
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            <?php endforeach; ?>
+                                        <?php endif; ?>
                                     </tbody>
                                 </table>
                             </div>
                         </div>
+
+                        <!-- Pagination -->
+                        <?php if ($totalEmployees > $limit): ?>
+                            <div class="flex items-center justify-between">
+                                <div class="text-sm text-slate-500">
+                                    Showing <?php echo $offset + 1; ?> to
+                                    <?php echo min($offset + $limit, $totalEmployees); ?> of <?php echo $totalEmployees; ?>
+                                    employees
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <?php if ($page > 1): ?>
+                                        <a href="?page=employees&p=<?php echo $page - 1; ?>&search=<?php echo urlencode($search); ?>"
+                                            class="px-3 py-1 border border-[hsl(var(--border))] rounded-md hover:bg-[hsl(var(--accent))] transition-colors">
+                                            Previous
+                                        </a>
+                                    <?php endif; ?>
+
+                                    <?php
+                                    $totalPages = ceil($totalEmployees / $limit);
+                                    $startPage = max(1, $page - 2);
+                                    $endPage = min($totalPages, $page + 2);
+
+                                    for ($i = $startPage; $i <= $endPage; $i++):
+                                        ?>
+                                        <a href="?page=employees&p=<?php echo $i; ?>&search=<?php echo urlencode($search); ?>"
+                                            class="px-3 py-1 border border-[hsl(var(--border))] rounded-md <?php echo $i === $page ? 'bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]' : 'hover:bg-[hsl(var(--accent))]'; ?> transition-colors">
+                                            <?php echo $i; ?>
+                                        </a>
+                                    <?php endfor; ?>
+
+                                    <?php if ($page < $totalPages): ?>
+                                        <a href="?page=employees&p=<?php echo $page + 1; ?>&search=<?php echo urlencode($search); ?>"
+                                            class="px-3 py-1 border border-[hsl(var(--border))] rounded-md hover:bg-[hsl(var(--accent))] transition-colors">
+                                            Next
+                                        </a>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        <?php endif; ?>
                     </section>
                 </main>
             </div>
         </div>
     </div>
 
-    <!-- Add Employee Modal -->
-    <div id="addModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
-        <div class="flex items-center justify-center min-h-screen p-4">
-            <div class="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-                <h3 class="text-lg font-semibold mb-4">Add New Employee</h3>
-                <form method="POST">
-                    <input type="hidden" name="action" value="add_employee">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <!-- Basic Information -->
-                        <div class="space-y-4">
-                            <h4 class="font-medium text-gray-900 border-b pb-2">Basic Information</h4>
-                            <div>
-                                <label class="block text-sm font-medium mb-1">Employee Number</label>
-                                <input type="text" name="employee_number" required
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium mb-1">First Name</label>
-                                <input type="text" name="first_name" required
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium mb-1">Last Name</label>
-                                <input type="text" name="last_name" required
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium mb-1">Department</label>
-                                <select name="department_id" required
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                    <option value="">Select Department</option>
-                                    <?php foreach ($departments as $dept): ?>
-                                        <option value="<?php echo $dept['id']; ?>">
-                                            <?php echo htmlspecialchars($dept['department_name']); ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium mb-1">Position</label>
-                                <select name="position_id" required
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                    <option value="">Select Position</option>
-                                    <?php foreach ($positions as $pos): ?>
-                                        <option value="<?php echo $pos['id']; ?>">
-                                            <?php echo htmlspecialchars($pos['position_title']); ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium mb-1">Hire Date</label>
-                                <input type="date" name="hire_date" required
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            </div>
-                        </div>
-
-                        <!-- Personal Details -->
-                        <div class="space-y-4">
-                            <h4 class="font-medium text-gray-900 border-b pb-2">Personal Details</h4>
-                            <div>
-                                <label class="block text-sm font-medium mb-1">Birth Date</label>
-                                <input type="date" name="birth_date" required
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium mb-1">Gender</label>
-                                <select name="gender" required
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                    <option value="">Select Gender</option>
-                                    <option value="M">Male</option>
-                                    <option value="F">Female</option>
-                                    <option value="Other">Other</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium mb-1">Civil Status</label>
-                                <select name="civil_status" required
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                    <option value="">Select Civil Status</option>
-                                    <option value="Single">Single</option>
-                                    <option value="Married">Married</option>
-                                    <option value="Widowed">Widowed</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium mb-1">Contact Number</label>
-                                <input type="tel" name="contact_number" required
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium mb-1">Email</label>
-                                <input type="email" name="email" required
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium mb-1">Address</label>
-                                <textarea name="address" rows="3" required
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
-                            </div>
-                        </div>
-
-                        <!-- Emergency Contact -->
-                        <div class="space-y-4">
-                            <h4 class="font-medium text-gray-900 border-b pb-2">Emergency Contact</h4>
-                            <div>
-                                <label class="block text-sm font-medium mb-1">Emergency Contact Name</label>
-                                <input type="text" name="emergency_contact_name" required
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium mb-1">Emergency Contact Number</label>
-                                <input type="tel" name="emergency_contact_number" required
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            </div>
-                        </div>
-
-                        <!-- Government IDs -->
-                        <div class="space-y-4">
-                            <h4 class="font-medium text-gray-900 border-b pb-2">Government IDs</h4>
-                            <div>
-                                <label class="block text-sm font-medium mb-1">SSS Number</label>
-                                <input type="text" name="sss_no" required
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium mb-1">PhilHealth Number</label>
-                                <input type="text" name="philhealth_no" required
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium mb-1">Pag-IBIG Number</label>
-                                <input type="text" name="pagibig_no" required
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium mb-1">TIN Number</label>
-                                <input type="text" name="tin_no" required
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium mb-1">Employment Type</label>
-                                <select name="employment_type" required
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                    <option value="">Select Employment Type</option>
-                                    <option value="Regular">Regular</option>
-                                    <option value="Contractual">Contractual</option>
-                                    <option value="Probationary">Probationary</option>
-                                    <option value="Part-time">Part-time</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="flex gap-2 mt-6">
-                        <button type="submit"
-                            class="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700">Add
-                            Employee</button>
-                        <button type="button" onclick="closeAddModal()"
-                            class="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-400">Cancel</button>
-                    </div>
-                </form>
+    <!-- Create Employee Modal -->
+    <div id="createModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-[hsl(var(--card))] rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div class="p-6 border-b border-[hsl(var(--border))]">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-lg font-semibold">Add New Employee</h3>
+                    <button onclick="closeCreateModal()" class="text-slate-400 hover:text-slate-600 transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
             </div>
+            <form method="POST" class="p-6 space-y-4">
+                <input type="hidden" name="action" value="create_employee">
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Employee Number
+                            *</label>
+                        <input type="text" name="employee_number" required
+                            class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Hire Date
+                            *</label>
+                        <input type="date" name="hire_date" required
+                            class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">First Name
+                            *</label>
+                        <input type="text" name="first_name" required
+                            class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Last Name
+                            *</label>
+                        <input type="text" name="last_name" required
+                            class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Department
+                            *</label>
+                        <select name="department_id" required
+                            class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]">
+                            <option value="">Select Department</option>
+                            <?php foreach ($departments as $dept): ?>
+                                <option value="<?php echo $dept['id']; ?>">
+                                    <?php echo htmlspecialchars($dept['department_name']); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Position
+                            *</label>
+                        <select name="position_id" required
+                            class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]">
+                            <option value="">Select Position</option>
+                            <?php foreach ($positions as $pos): ?>
+                                <option value="<?php echo $pos['id']; ?>">
+                                    <?php echo htmlspecialchars($pos['position_title']); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Email *</label>
+                        <input type="email" name="email" required
+                            class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Contact Number
+                            *</label>
+                        <input type="tel" name="contact_number" required
+                            class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Address *</label>
+                    <textarea name="address" rows="3" required
+                        class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]"></textarea>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Birth Date
+                            *</label>
+                        <input type="date" name="birth_date" required
+                            class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Gender
+                            *</label>
+                        <select name="gender" required
+                            class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]">
+                            <option value="">Select Gender</option>
+                            <option value="M">Male</option>
+                            <option value="F">Female</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Civil Status
+                            *</label>
+                        <select name="civil_status" required
+                            class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]">
+                            <option value="">Select Status</option>
+                            <option value="Single">Single</option>
+                            <option value="Married">Married</option>
+                            <option value="Widowed">Widowed</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Employment Type
+                        *</label>
+                    <select name="employment_type" required
+                        class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]">
+                        <option value="">Select Type</option>
+                        <option value="Regular">Regular</option>
+                        <option value="Contractual">Contractual</option>
+                        <option value="Probationary">Probationary</option>
+                        <option value="Part-time">Part-time</option>
+                    </select>
+                </div>
+
+                <div class="flex justify-end gap-3 pt-4">
+                    <button type="button" onclick="closeCreateModal()"
+                        class="px-4 py-2 border border-[hsl(var(--border))] text-[hsl(var(--foreground))] rounded-md hover:bg-[hsl(var(--accent))] transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit"
+                        class="px-4 py-2 bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] rounded-md hover:opacity-95 transition-opacity">
+                        Create Employee
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 
-    <!-- Status Update Modal -->
-    <div id="statusModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
-        <div class="flex items-center justify-center min-h-screen p-4">
-            <div class="bg-white rounded-lg p-6 w-full max-w-md">
-                <h3 class="text-lg font-semibold mb-4">Update Employee Status</h3>
-                <form method="POST">
-                    <input type="hidden" name="action" value="update_status">
-                    <input type="hidden" name="employee_id" id="statusEmployeeId">
-                    <div class="space-y-4">
-                        <div>
-                            <label class="block text-sm font-medium mb-1">New Status</label>
-                            <select name="status" required
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                <option value="Active">Active</option>
-                                <option value="Inactive">Inactive</option>
-                                <option value="Resigned">Resigned</option>
-                                <option value="Terminated">Terminated</option>
-                                <option value="Retired">Retired</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="flex gap-2 mt-6">
-                        <button type="submit"
-                            class="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700">Update
-                            Status</button>
-                        <button type="button" onclick="closeStatusModal()"
-                            class="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-400">Cancel</button>
-                    </div>
-                </form>
+    <!-- Edit Employee Modal -->
+    <div id="editModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-[hsl(var(--card))] rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div class="p-6 border-b border-[hsl(var(--border))]">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-lg font-semibold">Edit Employee</h3>
+                    <button onclick="closeEditModal()" class="text-slate-400 hover:text-slate-600 transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
             </div>
+            <form method="POST" class="p-6 space-y-4">
+                <input type="hidden" name="action" value="update_employee">
+                <input type="hidden" name="employee_id" id="edit_employee_id">
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">First Name
+                            *</label>
+                        <input type="text" name="first_name" id="edit_first_name" required
+                            class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Last Name
+                            *</label>
+                        <input type="text" name="last_name" id="edit_last_name" required
+                            class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Department
+                            *</label>
+                        <select name="department_id" id="edit_department_id" required
+                            class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]">
+                            <option value="">Select Department</option>
+                            <?php foreach ($departments as $dept): ?>
+                                <option value="<?php echo $dept['id']; ?>">
+                                    <?php echo htmlspecialchars($dept['department_name']); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Position
+                            *</label>
+                        <select name="position_id" id="edit_position_id" required
+                            class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]">
+                            <option value="">Select Position</option>
+                            <?php foreach ($positions as $pos): ?>
+                                <option value="<?php echo $pos['id']; ?>">
+                                    <?php echo htmlspecialchars($pos['position_title']); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Email *</label>
+                        <input type="email" name="email" id="edit_email" required
+                            class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Contact Number
+                            *</label>
+                        <input type="tel" name="contact_number" id="edit_contact_number" required
+                            class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Address *</label>
+                    <textarea name="address" id="edit_address" rows="3" required
+                        class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]"></textarea>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Birth Date
+                            *</label>
+                        <input type="date" name="birth_date" id="edit_birth_date" required
+                            class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Gender
+                            *</label>
+                        <select name="gender" id="edit_gender" required
+                            class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]">
+                            <option value="">Select Gender</option>
+                            <option value="M">Male</option>
+                            <option value="F">Female</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Civil Status
+                            *</label>
+                        <select name="civil_status" id="edit_civil_status" required
+                            class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]">
+                            <option value="">Select Status</option>
+                            <option value="Single">Single</option>
+                            <option value="Married">Married</option>
+                            <option value="Widowed">Widowed</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Employment Type
+                        *</label>
+                    <select name="employment_type" id="edit_employment_type" required
+                        class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]">
+                        <option value="">Select Type</option>
+                        <option value="Regular">Regular</option>
+                        <option value="Contractual">Contractual</option>
+                        <option value="Probationary">Probationary</option>
+                        <option value="Part-time">Part-time</option>
+                    </select>
+                </div>
+
+                <div class="flex justify-end gap-3 pt-4">
+                    <button type="button" onclick="closeEditModal()"
+                        class="px-4 py-2 border border-[hsl(var(--border))] text-[hsl(var(--foreground))] rounded-md hover:bg-[hsl(var(--accent))] transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit"
+                        class="px-4 py-2 bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] rounded-md hover:opacity-95 transition-opacity">
+                        Update Employee
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 
-    <!-- Onboarding Modal -->
-    <div id="onboardingModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
-        <div class="flex items-center justify-center min-h-screen p-4">
-            <div class="bg-white rounded-lg p-6 w-full max-w-md">
-                <h3 class="text-lg font-semibold mb-4">Onboard Employee</h3>
-                <form method="POST">
-                    <input type="hidden" name="action" value="onboard_employee">
-                    <div class="space-y-4">
-                        <div>
-                            <label class="block text-sm font-medium mb-1">Select Employee</label>
-                            <select name="employee_id" required
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                <option value="">Select Employee</option>
-                                <?php foreach ($employees as $emp): ?>
-                                    <?php if ($emp['status'] === 'Inactive'): ?>
-                                        <option value="<?php echo $emp['id']; ?>">
-                                            <?php echo htmlspecialchars($emp['first_name'] . ' ' . $emp['last_name'] . ' (' . $emp['employee_number'] . ')'); ?>
-                                        </option>
-                                    <?php endif; ?>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div class="bg-green-50 border border-green-200 rounded-md p-3">
-                            <div class="text-sm text-green-800">
-                                <strong>Onboarding Process:</strong>
-                                <ul class="mt-2 space-y-1 text-xs">
-                                    <li>• Activate employee account</li>
-                                    <li>• Assign department and position</li>
-                                    <li>• Set up payroll and benefits</li>
-                                    <li>• Send welcome email</li>
-                                </ul>
-                            </div>
-                        </div>
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-[hsl(var(--card))] rounded-lg shadow-xl max-w-md w-full">
+            <div class="p-6">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="w-10 h-10 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center">
+                        <svg class="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z">
+                            </path>
+                        </svg>
                     </div>
-                    <div class="flex gap-2 mt-6">
+                    <div>
+                        <h3 class="text-lg font-semibold">Confirm Deactivation</h3>
+                        <p class="text-sm text-slate-500">This action cannot be undone.</p>
+                    </div>
+                </div>
+                <p class="text-sm text-slate-600 dark:text-slate-300 mb-6">
+                    Are you sure you want to deactivate this employee? They will be marked as inactive and removed from
+                    active employee lists.
+                </p>
+                <form method="POST" id="deleteForm">
+                    <input type="hidden" name="action" value="delete_employee">
+                    <input type="hidden" name="employee_id" id="delete_employee_id">
+                    <div class="flex justify-end gap-3">
+                        <button type="button" onclick="closeDeleteModal()"
+                            class="px-4 py-2 border border-[hsl(var(--border))] text-[hsl(var(--foreground))] rounded-md hover:bg-[hsl(var(--accent))] transition-colors">
+                            Cancel
+                        </button>
                         <button type="submit"
-                            class="flex-1 bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700">Onboard
-                            Employee</button>
-                        <button type="button" onclick="closeOnboardingModal()"
-                            class="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-400">Cancel</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- Offboarding Modal -->
-    <div id="offboardingModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
-        <div class="flex items-center justify-center min-h-screen p-4">
-            <div class="bg-white rounded-lg p-6 w-full max-w-md">
-                <h3 class="text-lg font-semibold mb-4">Offboard Employee</h3>
-                <form method="POST">
-                    <input type="hidden" name="action" value="offboard_employee">
-                    <div class="space-y-4">
-                        <div>
-                            <label class="block text-sm font-medium mb-1">Select Employee</label>
-                            <select name="employee_id" required
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                <option value="">Select Employee</option>
-                                <?php foreach ($employees as $emp): ?>
-                                    <?php if ($emp['status'] === 'Active'): ?>
-                                        <option value="<?php echo $emp['id']; ?>">
-                                            <?php echo htmlspecialchars($emp['first_name'] . ' ' . $emp['last_name'] . ' (' . $emp['employee_number'] . ')'); ?>
-                                        </option>
-                                    <?php endif; ?>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div class="bg-red-50 border border-red-200 rounded-md p-3">
-                            <div class="text-sm text-red-800">
-                                <strong>Offboarding Process:</strong>
-                                <ul class="mt-2 space-y-1 text-xs">
-                                    <li>• Deactivate employee account</li>
-                                    <li>• Process final payroll</li>
-                                    <li>• Collect company assets</li>
-                                    <li>• Update benefits and records</li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="flex gap-2 mt-6">
-                        <button type="submit"
-                            class="flex-1 bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700">Offboard
-                            Employee</button>
-                        <button type="button" onclick="closeOffboardingModal()"
-                            class="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-400">Cancel</button>
+                            class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors">
+                            Deactivate Employee
+                        </button>
                     </div>
                 </form>
             </div>
@@ -651,130 +752,59 @@ try {
 
     <script src="/HR4_COMPEN&INTELLI/shared/scripts.js"></script>
     <script>
-        function openAddModal() {
-            document.getElementById('addModal').classList.remove('hidden');
-        }
-
-        function closeAddModal() {
-            document.getElementById('addModal').classList.add('hidden');
-        }
-
-        function updateStatus(employeeId, currentStatus) {
-            document.getElementById('statusEmployeeId').value = employeeId;
-            document.querySelector('#statusModal select[name="status"]').value = currentStatus;
-            document.getElementById('statusModal').classList.remove('hidden');
-        }
-
-        function closeStatusModal() {
-            document.getElementById('statusModal').classList.add('hidden');
-        }
-
-        function openOnboardingModal() {
-            document.getElementById('onboardingModal').classList.remove('hidden');
-        }
-
-        function closeOnboardingModal() {
-            document.getElementById('onboardingModal').classList.add('hidden');
-        }
-
-        function openOffboardingModal() {
-            document.getElementById('offboardingModal').classList.remove('hidden');
-        }
-
-        function closeOffboardingModal() {
-            document.getElementById('offboardingModal').classList.add('hidden');
-        }
-
-        function viewEmployee(id) {
-            // Show employee details in a modal or redirect to profile page
-            window.open(`employee-profile.php?id=${id}`, '_blank');
-        }
-
-        function editEmployee(id) {
-            // Show edit employee modal with pre-filled data
-            alert('Edit employee ' + id + ' - This will open an edit modal with employee data');
-        }
-
-        function viewProfile(id) {
-            // Show detailed employee profile
-            window.open(`employee-profile.php?id=${id}`, '_blank');
-        }
-
-        function onboardEmployee(id) {
-            if (confirm('Are you sure you want to onboard this employee?')) {
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.innerHTML = `
-                    <input type="hidden" name="action" value="onboard_employee">
-                    <input type="hidden" name="employee_id" value="${id}">
-                `;
-                document.body.appendChild(form);
-                form.submit();
-            }
-        }
-
-        function offboardEmployee(id) {
-            if (confirm('Are you sure you want to offboard this employee?')) {
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.innerHTML = `
-                    <input type="hidden" name="action" value="offboard_employee">
-                    <input type="hidden" name="employee_id" value="${id}">
-                `;
-                document.body.appendChild(form);
-                form.submit();
-            }
-        }
-
-        function exportEmployees() {
-            // Implement export functionality
-            const table = document.querySelector('table');
-            const rows = Array.from(table.querySelectorAll('tr'));
-            const csvContent = rows.map(row =>
-                Array.from(row.querySelectorAll('td, th')).map(cell =>
-                    `"${cell.textContent.trim()}"`
-                ).join(',')
-            ).join('\n');
-
-            const blob = new Blob([csvContent], { type: 'text/csv' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'employees_export.csv';
-            a.click();
-            window.URL.revokeObjectURL(url);
-        }
-
-        function bulkUpdate() {
-            // Implement bulk update functionality
-            alert('Bulk update functionality - Select multiple employees and update their status or department');
-        }
-
         // Search functionality
-        document.getElementById('searchInput').addEventListener('input', function () {
-            const searchTerm = this.value.toLowerCase();
-            const rows = document.querySelectorAll('tbody tr');
-
-            rows.forEach(row => {
-                const text = row.textContent.toLowerCase();
-                row.style.display = text.includes(searchTerm) ? '' : 'none';
-            });
+        document.getElementById('searchInput').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                const search = this.value;
+                window.location.href = '?page=employees&search=' + encodeURIComponent(search);
+            }
         });
 
-        // Status filter functionality
-        document.getElementById('statusFilter').addEventListener('change', function () {
-            const filterValue = this.value;
-            const rows = document.querySelectorAll('tbody tr');
+        // Modal functions
+        function openCreateModal() {
+            document.getElementById('createModal').classList.remove('hidden');
+        }
 
-            rows.forEach(row => {
-                if (filterValue === '') {
-                    row.style.display = '';
-                } else {
-                    const statusCell = row.querySelector('td:nth-child(6)');
-                    const status = statusCell.textContent.trim();
-                    row.style.display = status === filterValue ? '' : 'none';
-                }
-            });
+        function closeCreateModal() {
+            document.getElementById('createModal').classList.add('hidden');
+        }
+
+        function openEditModal(employeeId, employeeData) {
+            document.getElementById('edit_employee_id').value = employeeId;
+            document.getElementById('edit_first_name').value = employeeData.first_name || '';
+            document.getElementById('edit_last_name').value = employeeData.last_name || '';
+            document.getElementById('edit_department_id').value = employeeData.department_id || '';
+            document.getElementById('edit_position_id').value = employeeData.position_id || '';
+            document.getElementById('edit_email').value = employeeData.email || '';
+            document.getElementById('edit_contact_number').value = employeeData.contact_number || '';
+            document.getElementById('edit_address').value = employeeData.address || '';
+            document.getElementById('edit_birth_date').value = employeeData.birth_date || '';
+            document.getElementById('edit_gender').value = employeeData.gender || '';
+            document.getElementById('edit_civil_status').value = employeeData.civil_status || '';
+            document.getElementById('edit_employment_type').value = employeeData.employment_type || '';
+            document.getElementById('editModal').classList.remove('hidden');
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').classList.add('hidden');
+        }
+
+        function openDeleteModal(employeeId, employeeName) {
+            document.getElementById('delete_employee_id').value = employeeId;
+            document.getElementById('deleteModal').classList.remove('hidden');
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('deleteModal').classList.add('hidden');
+        }
+
+        // Close modals when clicking outside
+        document.addEventListener('click', function (e) {
+            if (e.target.classList.contains('fixed')) {
+                closeCreateModal();
+                closeEditModal();
+                closeDeleteModal();
+            }
         });
     </script>
 </body>

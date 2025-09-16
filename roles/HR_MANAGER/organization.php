@@ -2,167 +2,84 @@
 // HR Manager Organization Page
 include_once __DIR__ . '/../../shared/header.php';
 include_once __DIR__ . '/../../shared/sidebar.php';
+include_once __DIR__ . '/../../shared/database_helper.php';
 include_once __DIR__ . '/../../routing/rbac.php';
-include_once __DIR__ . '/../../config/database.php';
 
 $activeId = 'organization';
 $sidebarItems = $SIDEBAR_ITEMS[$user['role']] ?? [];
 
-// Handle form submissions
+// Initialize database helper
+$dbHelper = new DatabaseHelper();
+
+// Handle CRUD operations
+$message = '';
+$messageType = '';
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($_POST['action'])) {
-        switch ($_POST['action']) {
-            case 'add_department':
-                try {
-                    $stmt = $pdo->prepare("INSERT INTO departments (department_name, department_head_id, parent_department_id, budget_allocation) VALUES (?, ?, ?, ?)");
-                    $stmt->execute([
-                        $_POST['department_name'],
-                        $_POST['department_head_id'] ?: null,
-                        $_POST['parent_department_id'] ?: null,
-                        $_POST['budget_allocation']
-                    ]);
-                    $success = "Department added successfully!";
-                } catch (PDOException $e) {
-                    $error = "Error adding department: " . $e->getMessage();
-                }
-                break;
+    $action = $_POST['action'] ?? '';
 
-            case 'update_department':
-                try {
-                    $stmt = $pdo->prepare("UPDATE departments SET department_name = ?, department_head_id = ?, parent_department_id = ?, budget_allocation = ? WHERE id = ?");
-                    $stmt->execute([
-                        $_POST['department_name'],
-                        $_POST['department_head_id'] ?: null,
-                        $_POST['parent_department_id'] ?: null,
-                        $_POST['budget_allocation'],
-                        $_POST['department_id']
-                    ]);
-                    $success = "Department updated successfully!";
-                } catch (PDOException $e) {
-                    $error = "Error updating department: " . $e->getMessage();
-                }
-                break;
+    if ($action === 'create_department') {
+        try {
+            $departmentName = $_POST['department_name'] ?? '';
+            $description = $_POST['description'] ?? '';
+            $budgetAllocation = floatval($_POST['budget_allocation'] ?? 0);
+            $headEmployeeId = intval($_POST['head_employee_id'] ?? 0);
+
+            $dbHelper->query("
+                INSERT INTO departments (department_name, description, budget_allocation, head_employee_id) 
+                VALUES (?, ?, ?, ?)
+            ", [$departmentName, $description, $budgetAllocation, $headEmployeeId ?: null]);
+
+            $message = 'Department created successfully!';
+            $messageType = 'success';
+        } catch (Exception $e) {
+            $message = 'Error creating department: ' . $e->getMessage();
+            $messageType = 'error';
+        }
+    } elseif ($action === 'update_department') {
+        try {
+            $departmentId = intval($_POST['department_id'] ?? 0);
+            $departmentName = $_POST['department_name'] ?? '';
+            $description = $_POST['description'] ?? '';
+            $budgetAllocation = floatval($_POST['budget_allocation'] ?? 0);
+            $headEmployeeId = intval($_POST['head_employee_id'] ?? 0);
+
+            $dbHelper->query("
+                UPDATE departments 
+                SET department_name = ?, description = ?, budget_allocation = ?, head_employee_id = ?
+                WHERE id = ?
+            ", [$departmentName, $description, $budgetAllocation, $headEmployeeId ?: null, $departmentId]);
+
+            $message = 'Department updated successfully!';
+            $messageType = 'success';
+        } catch (Exception $e) {
+            $message = 'Error updating department: ' . $e->getMessage();
+            $messageType = 'error';
+        }
+    } elseif ($action === 'delete_department') {
+        try {
+            $departmentId = intval($_POST['department_id'] ?? 0);
+            $dbHelper->query("DELETE FROM departments WHERE id = ?", [$departmentId]);
+            $message = 'Department deleted successfully!';
+            $messageType = 'success';
+        } catch (Exception $e) {
+            $message = 'Error deleting department: ' . $e->getMessage();
+            $messageType = 'error';
         }
     }
 }
 
-// Fetch departments with related data
-try {
-    $stmt = $pdo->query("SELECT d.*, 
-                        CONCAT(e.first_name, ' ', e.last_name) as head_name,
-                        e.employee_number as head_employee_number,
-                        pd.department_name as parent_name,
-                        COUNT(emp.id) as employee_count,
-                        AVG(sg.min_salary + sg.max_salary) / 2 as avg_salary
-                        FROM departments d
-                        LEFT JOIN employees e ON d.department_head_id = e.id
-                        LEFT JOIN departments pd ON d.parent_department_id = pd.id
-                        LEFT JOIN employees emp ON emp.department_id = d.id AND emp.status = 'Active'
-                        LEFT JOIN positions p ON emp.position_id = p.id
-                        LEFT JOIN salary_grades sg ON p.salary_grade_id = sg.id
-                        GROUP BY d.id
-                        ORDER BY d.department_name");
-    $departments = $stmt->fetchAll();
+// Get departments data
+$departments = $dbHelper->getDepartments();
 
-    // Fetch all employees for department head selection
-    $stmt = $pdo->query("SELECT id, CONCAT(first_name, ' ', last_name) as full_name, employee_number, department_id 
-                        FROM employees WHERE status = 'Active' ORDER BY first_name, last_name");
-    $employees = $stmt->fetchAll();
+// Get positions
+$positions = $dbHelper->getPositions();
 
-    // Get positions by department
-    $stmt = $pdo->query("SELECT p.*, d.department_name, sg.grade_level, sg.min_salary, sg.max_salary,
-                        COUNT(emp.id) as filled_positions
-                        FROM positions p
-                        LEFT JOIN departments d ON p.department_id = d.id
-                        LEFT JOIN salary_grades sg ON p.salary_grade_id = sg.id
-                        LEFT JOIN employees emp ON p.id = emp.position_id AND emp.status = 'Active'
-                        GROUP BY p.id
-                        ORDER BY d.department_name, p.position_title");
-    $positions = $stmt->fetchAll();
+// Get salary grades
+$salaryGrades = $dbHelper->fetchAll("SELECT * FROM salary_grades ORDER BY grade_level");
 
-    // Calculate statistics
-    $totalDepartments = count($departments);
-    $totalPositions = count($positions);
-    $totalBudget = $pdo->query("SELECT SUM(budget_allocation) FROM departments")->fetchColumn();
-    $openRoles = $pdo->query("SELECT COUNT(*) FROM positions p LEFT JOIN employees e ON p.id = e.position_id WHERE e.id IS NULL")->fetchColumn();
-    $totalEmployees = array_sum(array_column($departments, 'employee_count'));
-
-    // Department hierarchy for visualization
-    $hierarchy = [];
-    foreach ($departments as $dept) {
-        if (!$dept['parent_department_id']) {
-            $hierarchy[] = buildDepartmentHierarchy($dept, $departments);
-        }
-    }
-
-} catch (PDOException $e) {
-    $departments = [];
-    $employees = [];
-    $positions = [];
-    $totalDepartments = $totalPositions = $totalBudget = $openRoles = $totalEmployees = 0;
-    $hierarchy = [];
-}
-
-// Function to build department hierarchy
-function buildDepartmentHierarchy($department, $allDepartments)
-{
-    $children = array_filter($allDepartments, function ($dept) use ($department) {
-        return $dept['parent_department_id'] == $department['id'];
-    });
-
-    $department['children'] = array_map(function ($child) use ($allDepartments) {
-        return buildDepartmentHierarchy($child, $allDepartments);
-    }, $children);
-
-    return $department;
-}
-
-// Function to render department node in hierarchy
-function renderDepartmentNode($department, $level)
-{
-    $indent = $level * 20;
-    $html = '<div class="flex items-center space-x-2" style="margin-left: ' . $indent . 'px;">';
-
-    if ($level > 0) {
-        $html .= '<div class="w-4 h-px bg-gray-300"></div>';
-    }
-
-    $html .= '<div class="flex-1 bg-white border border-gray-200 rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow">';
-    $html .= '<div class="flex items-center justify-between">';
-    $html .= '<div>';
-    $html .= '<div class="font-medium text-gray-900">' . htmlspecialchars($department['department_name']) . '</div>';
-    $html .= '<div class="text-sm text-gray-500">';
-
-    if ($department['head_name']) {
-        $html .= 'Head: ' . htmlspecialchars($department['head_name']);
-    } else {
-        $html .= 'No head assigned';
-    }
-
-    $html .= ' • ' . $department['employee_count'] . ' employees';
-    $html .= ' • ₱' . number_format($department['budget_allocation'], 0) . ' budget';
-    $html .= '</div>';
-    $html .= '</div>';
-
-    $html .= '<div class="flex space-x-2">';
-    $html .= '<button onclick="editDepartment(' . $department['id'] . ')" class="text-blue-600 hover:text-blue-800 text-xs px-2 py-1 rounded hover:bg-blue-50">Edit</button>';
-    $html .= '<button onclick="viewDepartment(' . $department['id'] . ')" class="text-green-600 hover:text-green-800 text-xs px-2 py-1 rounded hover:bg-green-50">View</button>';
-    $html .= '</div>';
-    $html .= '</div>';
-    $html .= '</div>';
-
-    // Render children
-    if (!empty($department['children'])) {
-        $html .= '<div class="mt-2 space-y-2">';
-        foreach ($department['children'] as $child) {
-            $html .= renderDepartmentNode($child, $level + 1);
-        }
-        $html .= '</div>';
-    }
-
-    $html .= '</div>';
-    return $html;
-}
+// Calculate total budget
+$totalBudget = array_sum(array_column($departments, 'budget_allocation'));
 ?>
 
 <!DOCTYPE html>
@@ -191,133 +108,299 @@ function renderDepartmentNode($department, $level)
                             <p class="text-xs text-slate-500 mt-1">Structure, heads, and budget allocation</p>
                         </div>
 
-                        <?php if (isset($success)): ?>
-                            <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
-                                <?php echo htmlspecialchars($success); ?>
+                        <!-- Message Display -->
+                        <?php if ($message): ?>
+                            <div
+                                class="rounded-lg border border-[hsl(var(--border))] p-4 <?php echo $messageType === 'success' ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'; ?>">
+                                <div class="flex items-center gap-2">
+                                    <svg class="w-5 h-5 <?php echo $messageType === 'success' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'; ?>"
+                                        fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <?php if ($messageType === 'success'): ?>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M5 13l4 4L19 7"></path>
+                                        <?php else: ?>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M6 18L18 6M6 6l12 12"></path>
+                                        <?php endif; ?>
+                                    </svg>
+                                    <span
+                                        class="text-sm font-medium <?php echo $messageType === 'success' ? 'text-green-800 dark:text-green-200' : 'text-red-800 dark:text-red-200'; ?>">
+                                        <?php echo htmlspecialchars($message); ?>
+                                    </span>
+                                </div>
                             </div>
                         <?php endif; ?>
-
-                        <?php if (isset($error)): ?>
-                            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-                                <?php echo htmlspecialchars($error); ?>
-                            </div>
-                        <?php endif; ?>
-
-                        <!-- Organization Statistics -->
                         <div class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">
-                            <div class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
-                                <div class="text-xs text-slate-500 mb-1">Total Departments</div>
-                                <div class="text-2xl font-semibold"><?php echo number_format($totalDepartments); ?>
+                            <div
+                                class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4 hover:shadow-md transition-shadow">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <div class="text-xs text-slate-500 mb-1">Departments</div>
+                                        <div class="text-2xl font-semibold"><?php echo count($departments); ?></div>
+                                    </div>
+                                    <div
+                                        class="w-10 h-10 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex items-center justify-center">
+                                        <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none"
+                                            stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4">
+                                            </path>
+                                        </svg>
+                                    </div>
                                 </div>
-                                <div class="text-xs text-blue-600 mt-1">Organizational units</div>
                             </div>
-                            <div class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
-                                <div class="text-xs text-slate-500 mb-1">Total Positions</div>
-                                <div class="text-2xl font-semibold"><?php echo number_format($totalPositions); ?></div>
-                                <div class="text-xs text-green-600 mt-1">Job roles</div>
+                            <div
+                                class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4 hover:shadow-md transition-shadow">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <div class="text-xs text-slate-500 mb-1">Positions</div>
+                                        <div class="text-2xl font-semibold"><?php echo count($positions); ?></div>
+                                    </div>
+                                    <div
+                                        class="w-10 h-10 bg-green-100 dark:bg-green-900/20 rounded-lg flex items-center justify-center">
+                                        <svg class="w-5 h-5 text-green-600 dark:text-green-400" fill="none"
+                                            stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2-2v2m8 0V6a2 2 0 012 2v6a2 2 0 01-2 2H6a2 2 0 01-2-2V8a2 2 0 012-2V6">
+                                            </path>
+                                        </svg>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
-                                <div class="text-xs text-slate-500 mb-1">Open Roles</div>
-                                <div class="text-2xl font-semibold"><?php echo number_format($openRoles); ?></div>
-                                <div class="text-xs text-orange-600 mt-1">Available positions</div>
+                            <div
+                                class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4 hover:shadow-md transition-shadow">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <div class="text-xs text-slate-500 mb-1">Salary Grades</div>
+                                        <div class="text-2xl font-semibold"><?php echo count($salaryGrades); ?></div>
+                                    </div>
+                                    <div
+                                        class="w-10 h-10 bg-purple-100 dark:bg-purple-900/20 rounded-lg flex items-center justify-center">
+                                        <svg class="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none"
+                                            stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z">
+                                            </path>
+                                        </svg>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
-                                <div class="text-xs text-slate-500 mb-1">Total Budget</div>
-                                <div class="text-2xl font-semibold">₱<?php echo number_format($totalBudget, 0); ?></div>
-                                <div class="text-xs text-purple-600 mt-1">Allocated budget</div>
+                            <div
+                                class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4 hover:shadow-md transition-shadow">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <div class="text-xs text-slate-500 mb-1">Total Budget</div>
+                                        <div class="text-2xl font-semibold">
+                                            ₱<?php echo number_format($totalBudget, 0); ?></div>
+                                    </div>
+                                    <div
+                                        class="w-10 h-10 bg-orange-100 dark:bg-orange-900/20 rounded-lg flex items-center justify-center">
+                                        <svg class="w-5 h-5 text-orange-600 dark:text-orange-400" fill="none"
+                                            stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1">
+                                            </path>
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Department Structure -->
+                        <div class="grid lg:grid-cols-2 gap-4">
+                            <!-- Department List -->
+                            <div
+                                class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] text-[hsl(var(--card-foreground))] shadow-sm">
+                                <div
+                                    class="p-4 border-b border-[hsl(var(--border))] font-semibold flex items-center justify-between">
+                                    <span>Departments</span>
+                                    <button onclick="openCreateDepartmentModal()"
+                                        class="bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] px-3 py-1 rounded-md text-sm hover:opacity-95 transition-opacity">
+                                        Add Department
+                                    </button>
+                                </div>
+                                <div class="p-4">
+                                    <?php if (empty($departments)): ?>
+                                        <div class="text-center py-10 text-slate-500">
+                                            <div class="text-sm font-medium">No departments</div>
+                                            <div class="text-xs mt-1">Create departments to build your organization.</div>
+                                        </div>
+                                    <?php else: ?>
+                                        <div class="space-y-3">
+                                            <?php foreach ($departments as $dept): ?>
+                                                <div
+                                                    class="flex items-center justify-between p-3 rounded-lg border border-[hsl(var(--border))] hover:bg-[hsl(var(--accent))] transition-colors">
+                                                    <div class="flex-1">
+                                                        <div class="font-medium text-slate-900 dark:text-slate-100">
+                                                            <?php echo htmlspecialchars($dept['department_name']); ?>
+                                                        </div>
+                                                        <div class="text-xs text-slate-500">
+                                                            Head:
+                                                            <?php echo htmlspecialchars($dept['head_name'] ?? 'Not assigned'); ?>
+                                                            •
+                                                            <?php echo $dept['employee_count']; ?> employees
+                                                        </div>
+                                                    </div>
+                                                    <div class="text-right">
+                                                        <div class="text-sm font-semibold text-green-600 dark:text-green-400">
+                                                            ₱<?php echo number_format($dept['budget_allocation'], 0); ?>
+                                                        </div>
+                                                        <div class="flex items-center gap-1 mt-1">
+                                                            <button
+                                                                onclick="openEditDepartmentModal(<?php echo $dept['id']; ?>, '<?php echo htmlspecialchars($dept['department_name']); ?>', '<?php echo htmlspecialchars($dept['description'] ?? ''); ?>', <?php echo $dept['budget_allocation']; ?>, <?php echo $dept['head_employee_id'] ?: 'null'; ?>)"
+                                                                class="p-1 text-slate-400 hover:text-blue-600 transition-colors"
+                                                                title="Edit">
+                                                                <svg class="w-3 h-3" fill="none" stroke="currentColor"
+                                                                    viewBox="0 0 24 24">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                                        stroke-width="2"
+                                                                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z">
+                                                                    </path>
+                                                                </svg>
+                                                            </button>
+                                                            <button
+                                                                onclick="openDeleteDepartmentModal(<?php echo $dept['id']; ?>, '<?php echo htmlspecialchars($dept['department_name']); ?>')"
+                                                                class="p-1 text-slate-400 hover:text-red-600 transition-colors"
+                                                                title="Delete">
+                                                                <svg class="w-3 h-3" fill="none" stroke="currentColor"
+                                                                    viewBox="0 0 24 24">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                                        stroke-width="2"
+                                                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
+                                                                    </path>
+                                                                </svg>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            <?php endforeach; ?>
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+
+                            <!-- Position Structure -->
+                            <div
+                                class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] text-[hsl(var(--card-foreground))] shadow-sm">
+                                <div
+                                    class="p-4 border-b border-[hsl(var(--border))] font-semibold flex items-center justify-between">
+                                    <span>Positions</span>
+                                    <button
+                                        class="bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] px-3 py-1 rounded-md text-sm hover:opacity-95 transition-opacity">
+                                        Add Position
+                                    </button>
+                                </div>
+                                <div class="p-4">
+                                    <?php if (empty($positions)): ?>
+                                        <div class="text-center py-10 text-slate-500">
+                                            <div class="text-sm font-medium">No positions</div>
+                                            <div class="text-xs mt-1">Create positions to define roles.</div>
+                                        </div>
+                                    <?php else: ?>
+                                        <div class="space-y-2 max-h-96 overflow-y-auto">
+                                            <?php foreach (array_slice($positions, 0, 10) as $position): ?>
+                                                <div
+                                                    class="flex items-center justify-between p-2 rounded border border-[hsl(var(--border))] hover:bg-[hsl(var(--accent))] transition-colors">
+                                                    <div class="flex-1">
+                                                        <div class="text-sm font-medium text-slate-900 dark:text-slate-100">
+                                                            <?php echo htmlspecialchars($position['position_title']); ?>
+                                                        </div>
+                                                        <div class="text-xs text-slate-500">
+                                                            <?php echo htmlspecialchars($position['grade_level']); ?>
+                                                        </div>
+                                                    </div>
+                                                    <div class="text-right">
+                                                        <div class="text-xs text-slate-600 dark:text-slate-300">
+                                                            ₱<?php echo number_format($position['min_salary'], 0); ?> -
+                                                            ₱<?php echo number_format($position['max_salary'], 0); ?>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            <?php endforeach; ?>
+                                            <?php if (count($positions) > 10): ?>
+                                                <div class="text-center py-2">
+                                                    <button class="text-xs text-blue-600 hover:text-blue-800 transition-colors">
+                                                        View all <?php echo count($positions); ?> positions
+                                                    </button>
+                                                </div>
+                                            <?php endif; ?>
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
                             </div>
                         </div>
 
-                        <!-- Quick Actions -->
-                        <div class="flex flex-wrap gap-2">
-                            <button onclick="openAddModal()"
-                                class="bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] shadow hover:opacity-95 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-9 px-3">
-                                Add Department
-                            </button>
-                            <button onclick="openBudgetModal()"
-                                class="bg-green-600 text-white shadow hover:opacity-95 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-9 px-3">
-                                Budget Management
-                            </button>
-                            <button onclick="viewHierarchy()"
-                                class="bg-purple-600 text-white shadow hover:opacity-95 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-9 px-3">
-                                View Hierarchy
-                            </button>
-                            <button onclick="exportDepartments()"
-                                class="bg-slate-600 text-white shadow hover:opacity-95 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-9 px-3">
-                                Export Data
-                            </button>
-                        </div>
-
-                        <!-- Department Hierarchy Visualization -->
+                        <!-- Salary Grades Table -->
                         <div class="rounded-lg border border-[hsl(var(--border))] overflow-hidden">
-                            <div class="p-3 border-b border-[hsl(var(--border))] bg-[hsl(var(--secondary))]">
-                                <div class="flex flex-col sm:flex-row gap-2 sm:items-center justify-between">
-                                    <div class="font-semibold">Department Hierarchy</div>
-                                    <div class="text-sm text-slate-500">Organizational structure</div>
-                                </div>
+                            <div
+                                class="p-4 border-b border-[hsl(var(--border))] font-semibold flex items-center justify-between">
+                                <span>Salary Grades</span>
+                                <button
+                                    class="bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] px-3 py-1 rounded-md text-sm hover:opacity-95 transition-opacity">
+                                    Add Grade
+                                </button>
                             </div>
-                            <div class="p-4">
-                                <div id="hierarchyContainer" class="space-y-2">
-                                    <?php foreach ($hierarchy as $dept): ?>
-                                        <?php echo renderDepartmentNode($dept, 0); ?>
-                                    <?php endforeach; ?>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="rounded-lg border border-[hsl(var(--border))] overflow-hidden">
                             <div class="overflow-x-auto">
                                 <table class="min-w-full text-sm">
                                     <thead class="bg-[hsl(var(--secondary))]">
                                         <tr>
-                                            <th class="text-left px-3 py-2 font-semibold">Department</th>
-                                            <th class="text-left px-3 py-2 font-semibold">Head</th>
-                                            <th class="text-left px-3 py-2 font-semibold">Parent</th>
-                                            <th class="text-left px-3 py-2 font-semibold">Employees</th>
-                                            <th class="text-left px-3 py-2 font-semibold">Budget</th>
+                                            <th class="text-left px-3 py-2 font-semibold">Grade Level</th>
+                                            <th class="text-left px-3 py-2 font-semibold">Min Salary</th>
+                                            <th class="text-left px-3 py-2 font-semibold">Max Salary</th>
+                                            <th class="text-left px-3 py-2 font-semibold">Range</th>
                                             <th class="text-left px-3 py-2 font-semibold">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <?php if (empty($departments)): ?>
+                                        <?php if (empty($salaryGrades)): ?>
                                             <tr>
-                                                <td class="px-3 py-6 text-center text-slate-500" colspan="6">
-                                                    <div
-                                                        class="text-center py-10 border border-dashed border-[hsl(var(--border))] rounded-md">
-                                                        <div class="text-sm font-medium">No departments</div>
-                                                        <div class="text-xs text-slate-500 mt-1">Create departments to build
-                                                            your organization.</div>
+                                                <td class="px-3 py-6 text-center text-slate-500" colspan="5">
+                                                    <div class="text-center py-10">
+                                                        <div class="text-sm font-medium">No salary grades</div>
+                                                        <div class="text-xs text-slate-500 mt-1">Create salary grades to
+                                                            define pay ranges.</div>
                                                     </div>
                                                 </td>
                                             </tr>
                                         <?php else: ?>
-                                            <?php foreach ($departments as $dept): ?>
+                                            <?php foreach ($salaryGrades as $grade): ?>
                                                 <tr
-                                                    class="border-b border-[hsl(var(--border))] hover:bg-[hsl(var(--secondary))]">
-                                                    <td class="px-3 py-3">
-                                                        <div class="font-medium">
-                                                            <?php echo htmlspecialchars($dept['department_name']); ?>
-                                                        </div>
+                                                    class="border-t border-[hsl(var(--border))] hover:bg-[hsl(var(--accent))] transition-colors">
+                                                    <td class="px-3 py-3 font-medium text-slate-900 dark:text-slate-100">
+                                                        <?php echo htmlspecialchars($grade['grade_level']); ?>
+                                                    </td>
+                                                    <td class="px-3 py-3 text-slate-600 dark:text-slate-300">
+                                                        ₱<?php echo number_format($grade['min_salary'], 2); ?>
+                                                    </td>
+                                                    <td class="px-3 py-3 text-slate-600 dark:text-slate-300">
+                                                        ₱<?php echo number_format($grade['max_salary'], 2); ?>
+                                                    </td>
+                                                    <td class="px-3 py-3 text-slate-600 dark:text-slate-300">
+                                                        ₱<?php echo number_format($grade['max_salary'] - $grade['min_salary'], 2); ?>
                                                     </td>
                                                     <td class="px-3 py-3">
-                                                        <?php echo htmlspecialchars($dept['head_name'] ?? 'Not assigned'); ?>
-                                                    </td>
-                                                    <td class="px-3 py-3">
-                                                        <?php echo htmlspecialchars($dept['parent_name'] ?? 'Root'); ?>
-                                                    </td>
-                                                    <td class="px-3 py-3">
-                                                        <span class="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
-                                                            <?php echo $dept['employee_count']; ?> employees
-                                                        </span>
-                                                    </td>
-                                                    <td class="px-3 py-3">
-                                                        ₱<?php echo number_format($dept['budget_allocation'], 0); ?>
-                                                    </td>
-                                                    <td class="px-3 py-3">
-                                                        <div class="flex gap-1">
-                                                            <button onclick="editDepartment(<?php echo $dept['id']; ?>)"
-                                                                class="text-blue-600 hover:text-blue-800 text-xs">Edit</button>
-                                                            <button onclick="viewDepartment(<?php echo $dept['id']; ?>)"
-                                                                class="text-green-600 hover:text-green-800 text-xs">View</button>
+                                                        <div class="flex items-center gap-1">
+                                                            <button
+                                                                class="p-1 text-slate-400 hover:text-blue-600 transition-colors"
+                                                                title="Edit">
+                                                                <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                                    viewBox="0 0 24 24">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                                        stroke-width="2"
+                                                                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z">
+                                                                    </path>
+                                                                </svg>
+                                                            </button>
+                                                            <button
+                                                                class="p-1 text-slate-400 hover:text-red-600 transition-colors"
+                                                                title="Delete">
+                                                                <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                                    viewBox="0 0 24 24">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                                        stroke-width="2"
+                                                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
+                                                                    </path>
+                                                                </svg>
+                                                            </button>
                                                         </div>
                                                     </td>
                                                 </tr>
@@ -334,55 +417,180 @@ function renderDepartmentNode($department, $level)
         </div>
     </div>
 
-    <!-- Add Department Modal -->
-    <div id="addModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
-        <div class="flex items-center justify-center min-h-screen p-4">
-            <div class="bg-white rounded-lg p-6 w-full max-w-md">
-                <h3 class="text-lg font-semibold mb-4">Add New Department</h3>
-                <form method="POST">
-                    <input type="hidden" name="action" value="add_department">
-                    <div class="space-y-4">
-                        <div>
-                            <label class="block text-sm font-medium mb-1">Department Name</label>
-                            <input type="text" name="department_name" required
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium mb-1">Department Head</label>
-                            <select name="department_head_id"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                <option value="">Select Department Head</option>
-                                <?php foreach ($employees as $emp): ?>
-                                    <option value="<?php echo $emp['id']; ?>">
-                                        <?php echo htmlspecialchars($emp['full_name']); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium mb-1">Parent Department</label>
-                            <select name="parent_department_id"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                <option value="">Select Parent Department</option>
-                                <?php foreach ($departments as $dept): ?>
-                                    <option value="<?php echo $dept['id']; ?>">
-                                        <?php echo htmlspecialchars($dept['department_name']); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium mb-1">Budget Allocation</label>
-                            <input type="number" name="budget_allocation" step="0.01" required
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        </div>
+    <!-- Create Department Modal -->
+    <div id="createDepartmentModal"
+        class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-[hsl(var(--card))] rounded-lg shadow-xl max-w-lg w-full">
+            <div class="p-6 border-b border-[hsl(var(--border))]">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-lg font-semibold">Add Department</h3>
+                    <button onclick="closeCreateDepartmentModal()"
+                        class="text-slate-400 hover:text-slate-600 transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <form method="POST" class="p-6 space-y-4">
+                <input type="hidden" name="action" value="create_department">
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Department Name
+                        *</label>
+                    <input type="text" name="department_name" required
+                        class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Description</label>
+                    <textarea name="description" rows="3"
+                        class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]"></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Budget Allocation
+                        *</label>
+                    <input type="number" name="budget_allocation" step="0.01" min="0" required
+                        class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Department
+                        Head</label>
+                    <select name="head_employee_id"
+                        class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]">
+                        <option value="">Select Head (Optional)</option>
+                        <?php
+                        $allEmployees = $dbHelper->getEmployees(1000);
+                        foreach ($allEmployees as $emp):
+                            ?>
+                            <option value="<?php echo $emp['id']; ?>">
+                                <?php echo htmlspecialchars($emp['first_name'] . ' ' . $emp['last_name'] . ' (' . $emp['employee_number'] . ')'); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <div class="flex justify-end gap-3 pt-4">
+                    <button type="button" onclick="closeCreateDepartmentModal()"
+                        class="px-4 py-2 border border-[hsl(var(--border))] text-[hsl(var(--foreground))] rounded-md hover:bg-[hsl(var(--accent))] transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit"
+                        class="px-4 py-2 bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] rounded-md hover:opacity-95 transition-opacity">
+                        Create Department
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Department Modal -->
+    <div id="editDepartmentModal"
+        class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-[hsl(var(--card))] rounded-lg shadow-xl max-w-lg w-full">
+            <div class="p-6 border-b border-[hsl(var(--border))]">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-lg font-semibold">Edit Department</h3>
+                    <button onclick="closeEditDepartmentModal()"
+                        class="text-slate-400 hover:text-slate-600 transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <form method="POST" class="p-6 space-y-4">
+                <input type="hidden" name="action" value="update_department">
+                <input type="hidden" name="department_id" id="edit_department_id">
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Department Name
+                        *</label>
+                    <input type="text" name="department_name" id="edit_department_name" required
+                        class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Description</label>
+                    <textarea name="description" id="edit_description" rows="3"
+                        class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]"></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Budget Allocation
+                        *</label>
+                    <input type="number" name="budget_allocation" id="edit_budget_allocation" step="0.01" min="0"
+                        required
+                        class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Department
+                        Head</label>
+                    <select name="head_employee_id" id="edit_head_employee_id"
+                        class="w-full px-3 py-2 border border-[hsl(var(--border))] rounded-md bg-[hsl(var(--background))] text-[hsl(var(--foreground))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]">
+                        <option value="">Select Head (Optional)</option>
+                        <?php foreach ($allEmployees as $emp): ?>
+                            <option value="<?php echo $emp['id']; ?>">
+                                <?php echo htmlspecialchars($emp['first_name'] . ' ' . $emp['last_name'] . ' (' . $emp['employee_number'] . ')'); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <div class="flex justify-end gap-3 pt-4">
+                    <button type="button" onclick="closeEditDepartmentModal()"
+                        class="px-4 py-2 border border-[hsl(var(--border))] text-[hsl(var(--foreground))] rounded-md hover:bg-[hsl(var(--accent))] transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit"
+                        class="px-4 py-2 bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] rounded-md hover:opacity-95 transition-opacity">
+                        Update Department
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Delete Department Confirmation Modal -->
+    <div id="deleteDepartmentModal"
+        class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-[hsl(var(--card))] rounded-lg shadow-xl max-w-md w-full">
+            <div class="p-6">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="w-10 h-10 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center">
+                        <svg class="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z">
+                            </path>
+                        </svg>
                     </div>
-                    <div class="flex gap-2 mt-6">
+                    <div>
+                        <h3 class="text-lg font-semibold">Confirm Deletion</h3>
+                        <p class="text-sm text-slate-500">This action cannot be undone.</p>
+                    </div>
+                </div>
+                <p class="text-sm text-slate-600 dark:text-slate-300 mb-6">
+                    Are you sure you want to delete this department? This will affect all employees and positions in
+                    this department.
+                </p>
+                <form method="POST" id="deleteDepartmentForm">
+                    <input type="hidden" name="action" value="delete_department">
+                    <input type="hidden" name="department_id" id="delete_department_id">
+                    <div class="flex justify-end gap-3">
+                        <button type="button" onclick="closeDeleteDepartmentModal()"
+                            class="px-4 py-2 border border-[hsl(var(--border))] text-[hsl(var(--foreground))] rounded-md hover:bg-[hsl(var(--accent))] transition-colors">
+                            Cancel
+                        </button>
                         <button type="submit"
-                            class="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700">Add
-                            Department</button>
-                        <button type="button" onclick="closeAddModal()"
-                            class="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-400">Cancel</button>
+                            class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors">
+                            Delete Department
+                        </button>
                     </div>
                 </form>
             </div>
@@ -391,52 +599,45 @@ function renderDepartmentNode($department, $level)
 
     <script src="/HR4_COMPEN&INTELLI/shared/scripts.js"></script>
     <script>
-        function openAddModal() {
-            document.getElementById('addModal').classList.remove('hidden');
+        // Department Modal functions
+        function openCreateDepartmentModal() {
+            document.getElementById('createDepartmentModal').classList.remove('hidden');
         }
 
-        function closeAddModal() {
-            document.getElementById('addModal').classList.add('hidden');
+        function closeCreateDepartmentModal() {
+            document.getElementById('createDepartmentModal').classList.add('hidden');
         }
 
-        function editDepartment(id) {
-            // Implement edit department functionality
-            alert('Edit department ' + id);
+        function openEditDepartmentModal(departmentId, departmentName, description, budgetAllocation, headEmployeeId) {
+            document.getElementById('edit_department_id').value = departmentId;
+            document.getElementById('edit_department_name').value = departmentName;
+            document.getElementById('edit_description').value = description;
+            document.getElementById('edit_budget_allocation').value = budgetAllocation;
+            document.getElementById('edit_head_employee_id').value = headEmployeeId || '';
+            document.getElementById('editDepartmentModal').classList.remove('hidden');
         }
 
-        function viewDepartment(id) {
-            // Implement view department functionality
-            alert('View department ' + id);
+        function closeEditDepartmentModal() {
+            document.getElementById('editDepartmentModal').classList.add('hidden');
         }
 
-        function openBudgetModal() {
-            alert('Budget management functionality - Allocate and track department budgets');
+        function openDeleteDepartmentModal(departmentId, departmentName) {
+            document.getElementById('delete_department_id').value = departmentId;
+            document.getElementById('deleteDepartmentModal').classList.remove('hidden');
         }
 
-        function viewHierarchy() {
-            // Toggle hierarchy view
-            const container = document.getElementById('hierarchyContainer');
-            container.classList.toggle('hidden');
+        function closeDeleteDepartmentModal() {
+            document.getElementById('deleteDepartmentModal').classList.add('hidden');
         }
 
-        function exportDepartments() {
-            // Export departments data
-            const table = document.querySelector('table');
-            const rows = Array.from(table.querySelectorAll('tr'));
-            const csvContent = rows.map(row =>
-                Array.from(row.querySelectorAll('td, th')).map(cell =>
-                    `"${cell.textContent.trim()}"`
-                ).join(',')
-            ).join('\n');
-
-            const blob = new Blob([csvContent], { type: 'text/csv' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'departments_export.csv';
-            a.click();
-            window.URL.revokeObjectURL(url);
-        }
+        // Close modals when clicking outside
+        document.addEventListener('click', function (e) {
+            if (e.target.classList.contains('fixed')) {
+                closeCreateDepartmentModal();
+                closeEditDepartmentModal();
+                closeDeleteDepartmentModal();
+            }
+        });
     </script>
 </body>
 
