@@ -1,0 +1,132 @@
+Step 1:
+fully finish Implementing/Developing missing gaps of frontend ui/ux related on expected results.
+After implementing/developing frontend integrate it with the database @sample_data.sql @schema.sql.
+
+Expected Result upon integration:
+Dashboard/HR Manager: Role-based overview with quick insights
+Employee Management: Directory, profiles, onboarding and offboarding
+Department Control: Structure, heads, and budget allocation
+Payroll: Processing calendar, approvals and exception handling
+Compensation Planning: Budgets, increases, equity, and approvals
+Benefits Administration: Plans, enrollments, claims and providers
+Document Center: Library with access logs and versioning
+Analytics Hub: Real-time workforce and payroll analytics
+Delegations: Temporary roles, approval chains, tracking
+Bulk Operations: Mass updates, document processing, validation
+Settings: Users, roles, permissions, and system configuration
+
+I expect you are implementing the functionable process, interactiveble full finish.
+
+Here are the file that you are going to manipulate: @analytics.php @benefits.php @bulk.php @compensation.php @dashboard.php @delegations.php @documents.php @employees.php @organization.php @payroll.php @settings.php 
+
+Please don't include fake data use only the data in @sample_data.sql @schema.sql and make sure no one is empty data but use only the resources that we have @sample_data.sql @schema.sql
+
+make sure the ui/ux doesn't look messy, if there are many component then make other solution.
+
+make sure also the design are related with @styles.css with modern ui and have an interaction design with light mode and dark mode.
+
+Step 2:
+
+Act as fullstack developer with an excellent skill in backend and frontend. 
+find the missing gaps that are not implemented in Expected Result of integration of frontend ui/ux related on expected results.
+After implementing/developing frontend integrate it with the database @sample_data.sql @schema.sql.
+
+Expected Result upon integration:
+Dashboard/HR Manager: Role-based overview with quick insights
+Employee Management: Directory, profiles, onboarding and offboarding
+Department Control: Structure, heads, and budget allocation
+Payroll: Processing calendar, approvals and exception handling
+Compensation Planning: Budgets, increases, equity, and approvals
+Benefits Administration: Plans, enrollments, claims and providers
+Document Center: Library with access logs and versioning
+Analytics Hub: Real-time workforce and payroll analytics
+Delegations: Temporary roles, approval chains, tracking
+Bulk Operations: Mass updates, document processing, validation
+Settings: Users, roles, permissions, and system configuration
+
+I expect you are implementing the functionable process, interactiveble, visualize and fully finish.
+
+Here are the file that you are going to manipulate: @analytics.php @benefits.php @bulk.php @compensation.php @dashboard.php @delegations.php @documents.php @employees.php @organization.php @payroll.php @settings.php 
+
+Please don't include fake data use only the data in @sample_data.sql @schema.sql and make sure no one is empty data but use only the resources that we have @sample_data.sql @schema.sql.
+
+make sure the ui/ux doesn't look messy, if there are many component then make other solution.
+
+make sure also the design are related with @styles.css with modern ui and have an interaction design  with light mode and dark mode.
+
+
+step 3:
+Act as fullstack developer with an excellent skill in backend and frontend.
+find the missing gaps and problem that are not implemented fully in Expected Result of integration of frontend ui/ux related on expected results.
+
+Expected Result upon integration:
+Dashboard/HR Manager: Role-based overview with quick insights
+Employee Management: Directory, profiles, onboarding and offboarding
+Department Control: Structure, heads, and budget allocation
+Payroll: Processing calendar, approvals and exception handling
+Compensation Planning: Budgets, increases, equity, and approvals
+Benefits Administration: Plans, enrollments, claims and providers
+Document Center: Library with access logs and versioning
+Analytics Hub: Real-time workforce and payroll analytics
+Delegations: Temporary roles, approval chains, tracking
+Bulk Operations: Mass updates, document processing, validation
+Settings: Users, roles, permissions, and system configuration
+
+implement resolution with the problem below:
+
+Warning: Undefined array key "recent_documents" in C:\xampp\htdocs\HR4_COMPEN&INTELLI\roles\HR_MANAGER\settings.php on line 121
+
+Warning: Undefined array key "file_name" in C:\xampp\htdocs\HR4_COMPEN&INTELLI\roles\HR_MANAGER\documents.php on line 342
+
+@dashboard.php Recent Activities: No recent activities integrate with database @sample_data.sql @schema.sql 
+
+@employees.php No employees found: Add employees to get started integrate with database @sample_data.sql @schema.sql 
+
+Please don't include fake data use only the data in @sample_data.sql @schema.sql and make sure no one is empty data but use only the resources that we have @sample_data.sql @schema.sql.
+
+make sure the ui/ux doesn't look messy, if there are many component then make other solution.
+
+make sure also the design are related with @styles.css with modern ui and have an interaction design  with light mode and dark mode.
+
+make sure also all the button are fully functioning in which i can see the process of crud operation but make sure that is relatable with @sample_data.sql @schema.sql .
+
+step 3.1:
+Act as fullstack developer and frontend developer. you are going to track the each button per file and after you track each button make the process of the button working by creating some frontend component and relatable in the database of @schema.sql @sample_data.sql.
+
+here are the files that you are going to relate @styles.css 
+
+make sure the ui/ux doesn't look messy, if there are many component then make other solution.
+
+make sure also the design are related with @styles.css with modern ui and have an interaction design  with light mode and dark mode.
+
+here are the files you are going to track each button:
+@analytics.php @benefits.php @bulk.php @compensation.php @dashboard.php @delegations.php @documents.php @employees.php @organization.php @payroll.php @settings.php @settings_new.php 
+
+Step 3.2:
+Act as fullstack developer and frontend developer. you are going to make a CRUD (Create, Read, Update, Delete) operation that are indeed needed for each file and while creating a crud backend, you also create a frontend component that are needed in crud. The CRUD operation must be relatable and interactable in the database of @schema.sql @sample_data.sql.
+
+here are the files that you are going to relate @styles.css 
+
+make sure the ui/ux doesn't look messy, if there are many component then make other solution.
+
+make sure also the design are related with @styles.css with modern ui and have an interaction design  with light mode and dark mode.
+
+here are the files you are going to track each button:
+@analytics.php @benefits.php @bulk.php @compensation.php @dashboard.php @delegations.php @documents.php @employees.php @organization.php @payroll.php @settings.php @settings_new.php 
+
+Step 3.3:
+Act as fullstack developer and frontend developer. you are going to make a CRUD (Create, Read, Update, Delete) operation that are indeed needed for each file and while creating a crud backend, you also create a frontend component that are needed in crud if doesn't not have then don't create. The CRUD operation must be relatable and interactable in the database of @schema.sql @sample_data.sql.
+
+here are the files that you are going to relate @styles.css 
+
+make sure the ui/ux doesn't look messy, if there are many component then make other solution.
+
+make sure also the design are related with @styles.css with modern ui and have an interaction design  with light mode and dark mode.
+
+here are the files you are going to use the CRUD (Create, Read, Update, Delete) operation that are indeed needed :
+@analytics.php @benefits.php @bulk.php @compensation.php @dashboard.php @delegations.php @documents.php @employees.php @organization.php @payroll.php @settings.php @settings_new.php 
+
+if you are going to create the frontend and backend program, just implement within their own each file here:
+@analytics.php @benefits.php @bulk.php @compensation.php @dashboard.php @delegations.php @documents.php @employees.php @organization.php @payroll.php @settings.php @settings_new.php 
+
+I expect you only find each file if their is operation if there is then create the frontend and backend
