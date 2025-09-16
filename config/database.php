@@ -44,4 +44,16 @@ class Database
         return null;
     }
 }
+
+// Create global PDO connection
+try {
+    $database = new Database();
+    $pdo = $database->getConnection();
+
+    if (!$pdo) {
+        throw new Exception("Database connection failed");
+    }
+} catch (Exception $e) {
+    die("Database connection error: " . $e->getMessage());
+}
 ?>
