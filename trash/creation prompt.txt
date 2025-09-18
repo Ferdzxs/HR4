@@ -1,0 +1,55 @@
+fully finish Implementing/Developing missing gaps of frontend ui/ux related on expected results.
+After implementing/developing frontend integrate it with the database @hr4_sample_data.sql @hr4_full_schema.sql .
+
+Expected Result upon integration:
+Dashboard (HR Overview): Summary of workforce, payroll cycles, benefits, and pending tasks.
+Employee Records: Full employee directory with personal info, employment details, onboarding/offboarding workflows.
+Leave Administration: Manage leave policies, monitor balances, approve escalated requests, and generate leave reports.
+Payroll Overview: View payroll calendar, check runs in progress, approve exceptions, ensure timely disbursement.
+Compensation Management: Maintain salary grades, track adjustments, review compensation plans, and approve increases.
+Benefits Administration: Oversee benefit plans, handle provider setup, manage employee enrollments and claims.
+HR Analytics Dashboard: Real-time workforce metrics (attrition, headcount, payroll cost, leave trends).
+HR Documents: Central library for HR policies, templates, contracts, with version control and access tracking.
+Delegations: Assign temporary roles, set approval chains, monitor delegated actions.
+Settings: Configure system roles, permissions, and HR-related configurations.
+
+I expect you are implementing the functionable process, interactiveble full finish.
+
+Here are the file that you are going to manipulate: @analytics.php @benefits.php @compensation.php @dashboard.php @delegations.php @documents.php @employees.php @leave.php @payroll.php @settings.php 
+
+Please don't include fake data use only the data in @hr4_full_schema.sql @hr4_sample_data.sql  and make sure no one is empty data but use only the resources that we have @hr4_full_schema.sql @hr4_sample_data.sql 
+
+make sure the ui/ux doesn't look messy, if there are many component then make other solution.
+
+make sure also the design are related with @styles.css with modern ui and have an interaction design with light mode and dark mode in which all text are readable with dark mode and light mode and please also don't forget to stay responsive.
+
+Please always relate in real world and take this as seriously. Make sure every own role/user have their own accurate expected pov including the data that they can see.
+
+Step 2:
+Act as fullstack developer with an excellent skill in backend and frontend. 
+find the missing gaps that are not implemented in Expected Result of integration of frontend ui/ux related on expected results.
+After implementing/developing frontend integrate it with the database  @hr4_sample_data.sql @hr4_full_schema.sql.
+
+Expected Result upon integration:
+Dashboard (HR Overview): Summary of workforce, payroll cycles, benefits, and pending tasks.
+Employee Records: Full employee directory with personal info, employment details, onboarding/offboarding workflows.
+Leave Administration: Manage leave policies, monitor balances, approve escalated requests, and generate leave reports.
+Payroll Overview: View payroll calendar, check runs in progress, approve exceptions, ensure timely disbursement.
+Compensation Management: Maintain salary grades, track adjustments, review compensation plans, and approve increases.
+Benefits Administration: Oversee benefit plans, handle provider setup, manage employee enrollments and claims.
+HR Analytics Dashboard: Real-time workforce metrics (attrition, headcount, payroll cost, leave trends).
+HR Documents: Central library for HR policies, templates, contracts, with version control and access tracking.
+Delegations: Assign temporary roles, set approval chains, monitor delegated actions.
+Settings: Configure system roles, permissions, and HR-related configurations.
+
+I expect you are implementing the functionable process, interactiveble full finish.
+
+Here are the file that you are going to manipulate: @analytics.php @benefits.php @compensation.php @dashboard.php @delegations.php @documents.php @employees.php @leave.php @payroll.php @settings.php 
+
+Please don't include fake data use only the data in @hr4_full_schema.sql @hr4_sample_data.sql  and make sure no one is empty data but use only the resources that we have @hr4_full_schema.sql @hr4_sample_data.sql 
+
+make sure the ui/ux doesn't look messy, if there are many component then make other solution.
+
+make sure also the design are related with @styles.css with modern ui and have an interaction design with light mode and dark mode in which all text are readable with dark mode and light mode and please also don't forget to stay responsive.
+
+Please always relate in real world and take this as seriously. Make sure every own role/user have their own accurate expected pov including the data that they can see.

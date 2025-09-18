@@ -1,13 +1,10 @@
 <?php
-// Payroll Administrator Dashboard Page
+// Payroll Administrator - Dashboard (Payroll Status Overview)
 include_once __DIR__ . '/../../shared/header.php';
 include_once __DIR__ . '/../../shared/sidebar.php';
 include_once __DIR__ . '/../../routing/rbac.php';
 
-
-
 $activeId = 'dashboard';
-
 $sidebarItems = $SIDEBAR_ITEMS[$user['role']] ?? [];
 ?>
 
@@ -17,10 +14,9 @@ $sidebarItems = $SIDEBAR_ITEMS[$user['role']] ?? [];
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HR4 - Payroll Administrator Dashboard</title>
+    <title>HR4 - Payroll Status Overview</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="/HR4_COMPEN&INTELLI/shared/styles.css">
-
 </head>
 
 <body>
@@ -33,36 +29,26 @@ $sidebarItems = $SIDEBAR_ITEMS[$user['role']] ?? [];
                 <main class="overflow-y-auto">
                     <section class="p-4 lg:p-6 space-y-4">
                         <div>
-                            <h1 class="text-lg font-semibold">Payroll Administrator</h1>
-                            <p class="text-xs text-slate-500 mt-1">Role-based overview with quick insights</p>
+                            <h1 class="text-lg font-semibold">Payroll Status Overview</h1>
+                            <p class="text-xs text-slate-500 mt-1">Current payroll run status, pending actions,
+                                exceptions flagged</p>
                         </div>
                         <div class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">
                             <div class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
-                                <div class="text-xs text-slate-500 mb-1">Current Period</div>
-                                <div class="text-2xl font-semibold">—</div>
-                                <div class="text-xs text-slate-500 mt-1">No active period</div>
-                            </div>
-                            <div class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
-                                <div class="text-xs text-slate-500 mb-1">Status</div>
+                                <div class="text-xs text-slate-500 mb-1">Current Run</div>
                                 <div class="text-2xl font-semibold">—</div>
                             </div>
                             <div class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
-                                <div class="text-xs text-slate-500 mb-1">Total Net Pay</div>
-                                <div class="text-2xl font-semibold">₱0</div>
+                                <div class="text-xs text-slate-500 mb-1">Pending Approvals</div>
+                                <div class="text-2xl font-semibold">—</div>
                             </div>
                             <div class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
-                                <div class="text-xs text-slate-500 mb-1">Processed</div>
-                                <div class="text-2xl font-semibold">0</div>
+                                <div class="text-xs text-slate-500 mb-1">Exceptions</div>
+                                <div class="text-2xl font-semibold">—</div>
                             </div>
-                        </div>
-                        <div class="space-y-2">
-                            <div
-                                class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] text-[hsl(var(--card-foreground))] shadow-sm">
-                                <div class="p-4 border-b border-[hsl(var(--border))] font-semibold">Recent Activities
-                                </div>
-                                <div class="p-4 text-sm text-slate-600 dark:text-slate-300">
-                                    <div class="text-sm text-slate-500">No recent activities</div>
-                                </div>
+                            <div class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
+                                <div class="text-xs text-slate-500 mb-1">Disbursement Status</div>
+                                <div class="text-2xl font-semibold">—</div>
                             </div>
                         </div>
                     </section>

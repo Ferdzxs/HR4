@@ -476,7 +476,8 @@ $salaryGrades = $dbHelper->fetchAll("SELECT * FROM salary_grades ORDER BY grade_
                             <option value="">Select Department</option>
                             <?php foreach ($departments as $dept): ?>
                                 <option value="<?php echo $dept['id']; ?>">
-                                    <?php echo htmlspecialchars($dept['department_name']); ?></option>
+                                    <?php echo htmlspecialchars($dept['department_name']); ?>
+                                </option>
                             <?php endforeach; ?>
                         </select>
                     </div>
@@ -488,7 +489,8 @@ $salaryGrades = $dbHelper->fetchAll("SELECT * FROM salary_grades ORDER BY grade_
                             <option value="">Select Position</option>
                             <?php foreach ($positions as $pos): ?>
                                 <option value="<?php echo $pos['id']; ?>">
-                                    <?php echo htmlspecialchars($pos['position_title']); ?></option>
+                                    <?php echo htmlspecialchars($pos['position_title']); ?>
+                                </option>
                             <?php endforeach; ?>
                         </select>
                     </div>
@@ -614,7 +616,8 @@ $salaryGrades = $dbHelper->fetchAll("SELECT * FROM salary_grades ORDER BY grade_
                             <option value="">Select Department</option>
                             <?php foreach ($departments as $dept): ?>
                                 <option value="<?php echo $dept['id']; ?>">
-                                    <?php echo htmlspecialchars($dept['department_name']); ?></option>
+                                    <?php echo htmlspecialchars($dept['department_name']); ?>
+                                </option>
                             <?php endforeach; ?>
                         </select>
                     </div>
@@ -626,7 +629,8 @@ $salaryGrades = $dbHelper->fetchAll("SELECT * FROM salary_grades ORDER BY grade_
                             <option value="">Select Position</option>
                             <?php foreach ($positions as $pos): ?>
                                 <option value="<?php echo $pos['id']; ?>">
-                                    <?php echo htmlspecialchars($pos['position_title']); ?></option>
+                                    <?php echo htmlspecialchars($pos['position_title']); ?>
+                                </option>
                             <?php endforeach; ?>
                         </select>
                     </div>

@@ -246,7 +246,7 @@ $totalBudget = array_sum(array_column($departments, 'budget_allocation'));
                                                         </div>
                                                         <div class="flex items-center gap-1 mt-1">
                                                             <button
-                                                                onclick="openEditDepartmentModal(<?php echo $dept['id']; ?>, '<?php echo htmlspecialchars($dept['department_name']); ?>', '<?php echo htmlspecialchars($dept['description'] ?? ''); ?>', <?php echo $dept['budget_allocation']; ?>, <?php echo ($dept['department_head_id'] ?? null) ?: 'null'; ?>)"
+                                                                onclick="openEditDepartmentModal(<?php echo $dept['id']; ?>, '<?php echo htmlspecialchars($dept['department_name']); ?>', '<?php echo htmlspecialchars($dept['description'] ?? ''); ?>', <?php echo $dept['budget_allocation']; ?>, <?php echo $dept['head_employee_id'] ?: 'null'; ?>)"
                                                                 class="p-1 text-slate-400 hover:text-blue-600 transition-colors"
                                                                 title="Edit">
                                                                 <svg class="w-3 h-3" fill="none" stroke="currentColor"

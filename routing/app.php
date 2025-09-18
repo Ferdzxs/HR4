@@ -81,25 +81,23 @@ $rolePages = [
     'HR Manager' => [
         'dashboard' => '../roles/HR_MANAGER/dashboard.php',
         'employees' => '../roles/HR_MANAGER/employees.php',
-        'organization' => '../roles/HR_MANAGER/organization.php',
         'payroll' => '../roles/HR_MANAGER/payroll.php',
         'compensation' => '../roles/HR_MANAGER/compensation.php',
         'benefits' => '../roles/HR_MANAGER/benefits.php',
+        'leave' => '../roles/HR_MANAGER/leave.php',
         'analytics' => '../roles/HR_MANAGER/analytics.php',
         'documents' => '../roles/HR_MANAGER/documents.php',
-        'settings' => '../roles/HR_MANAGER/settings.php',
         'delegations' => '../roles/HR_MANAGER/delegations.php',
-        'bulk' => '../roles/HR_MANAGER/bulk.php'
+        'settings' => '../roles/HR_MANAGER/settings.php'
     ],
     'Compensation Manager' => [
         'dashboard' => '../roles/COMPENSATION_MANAGER/dashboard.php',
-        'compensation' => '../roles/COMPENSATION_MANAGER/compensation.php',
+        'structures' => '../roles/COMPENSATION_MANAGER/structures.php',
         'merit' => '../roles/COMPENSATION_MANAGER/merit.php',
         'budget' => '../roles/COMPENSATION_MANAGER/budget.php',
-        'reports' => '../roles/COMPENSATION_MANAGER/reports.php',
         'equity' => '../roles/COMPENSATION_MANAGER/equity.php',
-        'structures' => '../roles/COMPENSATION_MANAGER/structures.php',
-        'market' => '../roles/COMPENSATION_MANAGER/market.php'
+        'benchmarking' => '../roles/COMPENSATION_MANAGER/benchmarking.php',
+        'analytics' => '../roles/COMPENSATION_MANAGER/analytics.php'
     ],
     'Benefits Coordinator' => [
         'dashboard' => '../roles/BENEFITS_COORDINATOR/dashboard.php',
@@ -134,19 +132,18 @@ $rolePages = [
         'dashboard' => '../roles/EMPLOYEE/dashboard.php',
         'profile' => '../roles/EMPLOYEE/profile.php',
         'payslips' => '../roles/EMPLOYEE/payslips.php',
-        'benefits-center' => '../roles/EMPLOYEE/benefits-center.php',
         'leave' => '../roles/EMPLOYEE/leave.php',
+        'benefits-center' => '../roles/EMPLOYEE/benefits-center.php',
         'documents' => '../roles/EMPLOYEE/documents.php',
         'help' => '../roles/EMPLOYEE/help.php'
     ],
     'Hospital Management' => [
         'dashboard' => '../roles/EXECUTIVE/dashboard.php',
-        'strategy' => '../roles/EXECUTIVE/strategy.php',
         'workforce' => '../roles/EXECUTIVE/workforce.php',
+        'cost' => '../roles/EXECUTIVE/cost.php',
+        'benefits' => '../roles/EXECUTIVE/benefits.php',
         'compliance' => '../roles/EXECUTIVE/compliance.php',
-        'reports' => '../roles/EXECUTIVE/reports.php',
-        'executive' => '../roles/EXECUTIVE/executive.php',
-        'cost' => '../roles/EXECUTIVE/cost.php'
+        'reports' => '../roles/EXECUTIVE/reports.php'
     ]
 ];
 

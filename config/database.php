@@ -5,7 +5,7 @@ class Database
     private $host = 'localhost';
     private $db_name = 'hr4_compensation_intelli';
     private $username = 'root';
-    private $password = '';
+    private $password = '54321';
     private $conn;
 
     public function getConnection()

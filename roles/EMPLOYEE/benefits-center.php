@@ -1,18 +1,11 @@
 <?php
-// Hospital Employee Benefits Center Page
+// Hospital Employee - Benefits Center
 include_once __DIR__ . '/../../shared/header.php';
 include_once __DIR__ . '/../../shared/sidebar.php';
 include_once __DIR__ . '/../../routing/rbac.php';
 
-
-
 $activeId = 'benefits-center';
-
-
-
 $sidebarItems = $SIDEBAR_ITEMS[$user['role']] ?? [];
-
-
 ?>
 
 <!DOCTYPE html>
@@ -34,54 +27,23 @@ $sidebarItems = $SIDEBAR_ITEMS[$user['role']] ?? [];
                 class="flex-1 grid <?php echo $sidebarCollapsed ? 'lg:grid-cols-[72px_1fr]' : 'lg:grid-cols-[260px_1fr]'; ?>">
                 <?php echo renderSidebar($sidebarItems, $activeId, $sidebarCollapsed); ?>
                 <main class="overflow-y-auto">
-
                     <section class="p-4 lg:p-6 space-y-4">
                         <div>
                             <h1 class="text-lg font-semibold">Benefits Center</h1>
-                            <p class="text-xs text-slate-500 mt-1">Active plans, contributions, and claim history</p>
+                            <p class="text-xs text-slate-500 mt-1">View active enrollments, contributions, and claim
+                                history</p>
                         </div>
-                        <div class="rounded-lg border border-[hsl(var(--border))] overflow-hidden">
-                            <div class="p-3 border-b border-[hsl(var(--border))] bg-[hsl(var(--secondary))]">
-                                <div class="flex flex-col sm:flex-row gap-2 sm:items-center justify-between">
-                                    <div class="flex gap-2">
-                                    </div>
-                                    <div>
-                                        <button
-                                            class="bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] shadow hover:opacity-95 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-9 px-3">Enroll/Update</button>
-                                    </div>
-                                </div>
+                        <div class="grid lg:grid-cols-2 gap-4">
+                            <div class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
+                                <div class="font-semibold mb-2">Active Enrollments</div>
+                                <div class="text-sm text-slate-600 dark:text-slate-300">No active enrollments.</div>
                             </div>
-                            <div class="overflow-x-auto">
-                                <table class="min-w-full text-sm">
-                                    <thead class="bg-[hsl(var(--secondary))]">
-                                        <tr>
-                                            <th class="text-left px-3 py-2 font-semibold">Plan</th>
-                                            <th class="text-left px-3 py-2 font-semibold">Status</th>
-                                            <th class="text-left px-3 py-2 font-semibold">Contribution</th>
-                                            <th class="text-left px-3 py-2 font-semibold">Since</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr>
-                                            <td class="px-3 py-6 text-center text-slate-500" colspan="4">
-                                                <div
-                                                    class="text-center py-10 border border-dashed border-[hsl(var(--border))] rounded-md">
-                                                    <div class="text-sm font-medium">No active benefits</div>
-                                                    <div class="text-xs text-slate-500 mt-1">Your enrollments will show
-                                                        here.</div>
-                                                    <div class="mt-3">
-                                                        <button
-                                                            class="bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] shadow hover:opacity-95 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-9 px-3">Enroll/Update</button>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
+                            <div class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
+                                <div class="font-semibold mb-2">Claim History</div>
+                                <div class="text-sm text-slate-600 dark:text-slate-300">No claims filed.</div>
                             </div>
                         </div>
                     </section>
-
                 </main>
             </div>
         </div>

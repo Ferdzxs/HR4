@@ -499,23 +499,22 @@ $documentTypes = array_keys($documentsByType);
                                                     <?php echo htmlspecialchars($document['employee_name']); ?>
                                                 </td>
                                                 <td class="px-3 py-3 text-slate-600 dark:text-slate-300">
-                                                    <?php echo htmlspecialchars($document['document_name'] ?? basename($document['file_path'] ?? '')); ?>
+                                                    <?php echo htmlspecialchars($document['document_name']); ?>
                                                 </td>
                                                 <td class="px-3 py-3 text-slate-600 dark:text-slate-300">
                                                     <?php echo htmlspecialchars($document['document_type']); ?>
                                                 </td>
                                                 <td class="px-3 py-3">
                                                     <span class="px-2 py-1 rounded-full text-xs font-medium <?php
-                                                    $docStatus = $document['status'] ?? 'Active';
-                                                    echo $docStatus === 'Active' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' :
-                                                        ($docStatus === 'Expired' ? 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400' :
+                                                    echo $document['status'] === 'Active' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' :
+                                                        ($document['status'] === 'Expired' ? 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400' :
                                                             'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400');
                                                     ?>">
-                                                        <?php echo htmlspecialchars($docStatus); ?>
+                                                        <?php echo htmlspecialchars($document['status']); ?>
                                                     </span>
                                                 </td>
                                                 <td class="px-3 py-3 text-slate-600 dark:text-slate-300">
-                                                    <?php echo (!empty($document['expiry_date'])) ? date('M j, Y', strtotime($document['expiry_date'])) : 'N/A'; ?>
+                                                    <?php echo $document['expiry_date'] ? date('M j, Y', strtotime($document['expiry_date'])) : 'N/A'; ?>
                                                 </td>
                                                 <td class="px-3 py-3">
                                                     <div class="flex items-center gap-1">
@@ -537,7 +536,7 @@ $documentTypes = array_keys($documentsByType);
                                                             </a>
                                                         <?php endif; ?>
                                                         <button
-                                                            onclick="openEditDocumentModal(<?php echo $document['id']; ?>, '<?php echo htmlspecialchars($document['document_name'] ?? basename($document['file_path'] ?? '')); ?>', '<?php echo htmlspecialchars($document['document_type'] ?? ''); ?>', '<?php echo htmlspecialchars($document['description'] ?? ''); ?>', '<?php echo $document['expiry_date'] ?? ''; ?>', '<?php echo $document['status'] ?? 'Active'; ?>')"
+                                                            onclick="openEditDocumentModal(<?php echo $document['id']; ?>, '<?php echo htmlspecialchars($document['document_name']); ?>', '<?php echo $document['document_type']; ?>', '<?php echo htmlspecialchars($document['description']); ?>', '<?php echo $document['expiry_date']; ?>', '<?php echo $document['status']; ?>')"
                                                             class="p-1 text-slate-400 hover:text-green-600 transition-colors"
                                                             title="Edit">
                                                             <svg class="w-4 h-4" fill="none" stroke="currentColor"

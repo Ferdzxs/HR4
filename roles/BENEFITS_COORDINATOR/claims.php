@@ -1,18 +1,11 @@
 <?php
-// Benefits Coordinator Claims Processing Page
+// Benefits Coordinator - Claims Processing
 include_once __DIR__ . '/../../shared/header.php';
 include_once __DIR__ . '/../../shared/sidebar.php';
 include_once __DIR__ . '/../../routing/rbac.php';
 
-
-
 $activeId = 'claims';
-
-
-
 $sidebarItems = $SIDEBAR_ITEMS[$user['role']] ?? [];
-
-
 ?>
 
 <!DOCTYPE html>
@@ -34,56 +27,37 @@ $sidebarItems = $SIDEBAR_ITEMS[$user['role']] ?? [];
                 class="flex-1 grid <?php echo $sidebarCollapsed ? 'lg:grid-cols-[72px_1fr]' : 'lg:grid-cols-[260px_1fr]'; ?>">
                 <?php echo renderSidebar($sidebarItems, $activeId, $sidebarCollapsed); ?>
                 <main class="overflow-y-auto">
-
                     <section class="p-4 lg:p-6 space-y-4">
                         <div>
                             <h1 class="text-lg font-semibold">Claims Processing</h1>
-                            <p class="text-xs text-slate-500 mt-1">Queue, verification, and approvals</p>
+                            <p class="text-xs text-slate-500 mt-1">Validate, approve, and track claims submitted by
+                                employees</p>
                         </div>
+
                         <div class="rounded-lg border border-[hsl(var(--border))] overflow-hidden">
-                            <div class="p-3 border-b border-[hsl(var(--border))] bg-[hsl(var(--secondary))]">
-                                <div class="flex flex-col sm:flex-row gap-2 sm:items-center justify-between">
-                                    <div class="flex gap-2">
-                                        <select id="claimFilter"
-                                            class="flex h-10 w-full rounded-md border border-[hsl(var(--input))] bg-transparent px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2">
-                                            <option value="">All</option>
-                                            <option value="Pending">Pending</option>
-                                            <option value="Approved">Approved</option>
-                                            <option value="Rejected">Rejected</option>
-                                        </select>
-                                    </div>
-                                    <div></div>
-                                </div>
-                            </div>
+                            <div
+                                class="p-3 border-b border-[hsl(var(--border))] bg-[hsl(var(--secondary))] font-semibold">
+                                Claims</div>
                             <div class="overflow-x-auto">
                                 <table class="min-w-full text-sm">
                                     <thead class="bg-[hsl(var(--secondary))]">
                                         <tr>
                                             <th class="text-left px-3 py-2 font-semibold">Employee</th>
-                                            <th class="text-left px-3 py-2 font-semibold">Plan</th>
+                                            <th class="text-left px-3 py-2 font-semibold">Type</th>
                                             <th class="text-left px-3 py-2 font-semibold">Amount</th>
-                                            <th class="text-left px-3 py-2 font-semibold">Date</th>
                                             <th class="text-left px-3 py-2 font-semibold">Status</th>
                                             <th class="text-left px-3 py-2 font-semibold">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         <tr>
-                                            <td class="px-3 py-6 text-center text-slate-500" colspan="6">
-                                                <div
-                                                    class="text-center py-10 border border-dashed border-[hsl(var(--border))] rounded-md">
-                                                    <div class="text-sm font-medium">No claims in queue</div>
-                                                    <div class="text-xs text-slate-500 mt-1">New submissions will appear
-                                                        here.</div>
-                                                </div>
-                                            </td>
+                                            <td class="px-3 py-6 text-center text-slate-500" colspan="5">No claims</td>
                                         </tr>
                                     </tbody>
                                 </table>
                             </div>
                         </div>
                     </section>
-
                 </main>
             </div>
         </div>

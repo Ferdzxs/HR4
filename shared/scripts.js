@@ -220,4 +220,415 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     });
   }
+
+  // Initialize modern UI components
+  window.modernUI = new ModernUI();
 });
+
+// __________________________________________________________________________________________________________
+
+// Modern UI Components
+class ModernUI {
+  constructor() {
+    this.init();
+  }
+
+  init() {
+    this.setupTooltips();
+    this.setupModals();
+    this.setupDropdowns();
+    this.setupTabs();
+    this.setupCharts();
+    this.setupDataTables();
+    this.setupFormValidation();
+    this.setupAnimations();
+    this.setupNotifications();
+  }
+
+  // Tooltip functionality
+  setupTooltips() {
+    const tooltipElements = document.querySelectorAll("[data-tooltip]");
+    tooltipElements.forEach((element) => {
+      element.addEventListener("mouseenter", this.showTooltip);
+      element.addEventListener("mouseleave", this.hideTooltip);
+    });
+  }
+
+  showTooltip(e) {
+    const text = e.target.getAttribute("data-tooltip");
+    const tooltip = document.createElement("div");
+    tooltip.className =
+      "absolute z-50 px-2 py-1 text-xs text-white bg-gray-900 dark:bg-gray-100 dark:text-gray-900 rounded shadow-lg pointer-events-none";
+    tooltip.textContent = text;
+    tooltip.id = "tooltip";
+    document.body.appendChild(tooltip);
+
+    const rect = e.target.getBoundingClientRect();
+    tooltip.style.left =
+      rect.left + rect.width / 2 - tooltip.offsetWidth / 2 + "px";
+    tooltip.style.top = rect.top - tooltip.offsetHeight - 5 + "px";
+  }
+
+  hideTooltip() {
+    const tooltip = document.getElementById("tooltip");
+    if (tooltip) {
+      tooltip.remove();
+    }
+  }
+
+  // Modal functionality
+  setupModals() {
+    const modalTriggers = document.querySelectorAll("[data-modal-target]");
+    const modalCloses = document.querySelectorAll("[data-modal-close]");
+
+    modalTriggers.forEach((trigger) => {
+      trigger.addEventListener("click", (e) => {
+        e.preventDefault();
+        const target = document.getElementById(
+          trigger.getAttribute("data-modal-target")
+        );
+        if (target) {
+          this.openModal(target);
+        }
+      });
+    });
+
+    modalCloses.forEach((close) => {
+      close.addEventListener("click", (e) => {
+        e.preventDefault();
+        const modal = close.closest(".modal");
+        if (modal) {
+          this.closeModal(modal);
+        }
+      });
+    });
+
+    // Close modal on backdrop click
+    document.addEventListener("click", (e) => {
+      if (e.target.classList.contains("modal-backdrop")) {
+        this.closeModal(e.target);
+      }
+    });
+  }
+
+  openModal(modal) {
+    modal.classList.remove("hidden");
+    modal.classList.add("flex");
+    document.body.classList.add("overflow-hidden");
+    setTimeout(() => {
+      modal.classList.add("opacity-100");
+    }, 10);
+  }
+
+  closeModal(modal) {
+    modal.classList.add("opacity-0");
+    setTimeout(() => {
+      modal.classList.add("hidden");
+      modal.classList.remove("flex", "opacity-100", "opacity-0");
+      document.body.classList.remove("overflow-hidden");
+    }, 300);
+  }
+
+  // Dropdown functionality
+  setupDropdowns() {
+    const dropdowns = document.querySelectorAll(".dropdown");
+    dropdowns.forEach((dropdown) => {
+      const toggle = dropdown.querySelector(".dropdown-toggle");
+      const menu = dropdown.querySelector(".dropdown-menu");
+
+      if (toggle && menu) {
+        toggle.addEventListener("click", (e) => {
+          e.stopPropagation();
+          this.toggleDropdown(dropdown);
+        });
+      }
+    });
+
+    // Close dropdowns when clicking outside
+    document.addEventListener("click", () => {
+      dropdowns.forEach((dropdown) => {
+        dropdown.classList.remove("open");
+      });
+    });
+  }
+
+  toggleDropdown(dropdown) {
+    const isOpen = dropdown.classList.contains("open");
+    document
+      .querySelectorAll(".dropdown.open")
+      .forEach((d) => d.classList.remove("open"));
+    if (!isOpen) {
+      dropdown.classList.add("open");
+    }
+  }
+
+  // Tab functionality
+  setupTabs() {
+    const tabContainers = document.querySelectorAll(".tabs");
+    tabContainers.forEach((container) => {
+      const tabs = container.querySelectorAll(".tab");
+      const panels = container.querySelectorAll(".tab-panel");
+
+      tabs.forEach((tab) => {
+        tab.addEventListener("click", () => {
+          const target = tab.getAttribute("data-tab");
+
+          // Update tab states
+          tabs.forEach((t) => t.classList.remove("active"));
+          tab.classList.add("active");
+
+          // Update panel states
+          panels.forEach((p) => p.classList.add("hidden"));
+          const targetPanel = container.querySelector(
+            `[data-panel="${target}"]`
+          );
+          if (targetPanel) {
+            targetPanel.classList.remove("hidden");
+          }
+        });
+      });
+    });
+  }
+
+  // Chart functionality (using Chart.js if available)
+  setupCharts() {
+    if (typeof Chart !== "undefined") {
+      this.initializeCharts();
+    }
+  }
+
+  initializeCharts() {
+    const chartElements = document.querySelectorAll("[data-chart]");
+    chartElements.forEach((element) => {
+      const type = element.getAttribute("data-chart-type") || "line";
+      const data = JSON.parse(element.getAttribute("data-chart-data") || "{}");
+      const options = JSON.parse(
+        element.getAttribute("data-chart-options") || "{}"
+      );
+
+      new Chart(element, {
+        type: type,
+        data: data,
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          ...options,
+        },
+      });
+    });
+  }
+
+  // Data table functionality
+  setupDataTables() {
+    const tables = document.querySelectorAll(".data-table");
+    tables.forEach((table) => {
+      this.enhanceDataTable(table);
+    });
+  }
+
+  enhanceDataTable(table) {
+    // Add sorting functionality
+    const headers = table.querySelectorAll("th[data-sort]");
+    headers.forEach((header) => {
+      header.style.cursor = "pointer";
+      header.classList.add("hover:bg-gray-100", "dark:hover:bg-gray-800");
+      header.addEventListener("click", () => {
+        this.sortTable(table, header);
+      });
+    });
+
+    // Add search functionality
+    const searchInput = table.parentElement.querySelector(".table-search");
+    if (searchInput) {
+      searchInput.addEventListener("input", (e) => {
+        this.filterTable(table, e.target.value);
+      });
+    }
+  }
+
+  sortTable(table, header) {
+    const column = header.getAttribute("data-sort");
+    const tbody = table.querySelector("tbody");
+    const rows = Array.from(tbody.querySelectorAll("tr"));
+    const isAscending = header.classList.contains("sort-asc");
+
+    // Remove sort classes from all headers
+    table.querySelectorAll("th").forEach((th) => {
+      th.classList.remove("sort-asc", "sort-desc");
+    });
+
+    // Add appropriate sort class
+    header.classList.add(isAscending ? "sort-desc" : "sort-asc");
+
+    // Sort rows
+    rows.sort((a, b) => {
+      const aVal =
+        a.querySelector(`[data-sort-value="${column}"]`)?.textContent || "";
+      const bVal =
+        b.querySelector(`[data-sort-value="${column}"]`)?.textContent || "";
+
+      if (isAscending) {
+        return bVal.localeCompare(aVal);
+      } else {
+        return aVal.localeCompare(bVal);
+      }
+    });
+
+    // Reorder rows in DOM
+    rows.forEach((row) => tbody.appendChild(row));
+  }
+
+  filterTable(table, searchTerm) {
+    const tbody = table.querySelector("tbody");
+    const rows = tbody.querySelectorAll("tr");
+
+    rows.forEach((row) => {
+      const text = row.textContent.toLowerCase();
+      const matches = text.includes(searchTerm.toLowerCase());
+      row.style.display = matches ? "" : "none";
+    });
+  }
+
+  // Form validation
+  setupFormValidation() {
+    const forms = document.querySelectorAll("form[data-validate]");
+    forms.forEach((form) => {
+      form.addEventListener("submit", (e) => {
+        if (!this.validateForm(form)) {
+          e.preventDefault();
+        }
+      });
+    });
+  }
+
+  validateForm(form) {
+    let isValid = true;
+    const inputs = form.querySelectorAll(
+      "input[required], select[required], textarea[required]"
+    );
+
+    inputs.forEach((input) => {
+      if (!input.value.trim()) {
+        this.showFieldError(input, "This field is required");
+        isValid = false;
+      } else {
+        this.clearFieldError(input);
+      }
+    });
+
+    return isValid;
+  }
+
+  showFieldError(input, message) {
+    this.clearFieldError(input);
+    input.classList.add("border-red-500");
+    const error = document.createElement("div");
+    error.className = "text-red-500 text-xs mt-1";
+    error.textContent = message;
+    input.parentElement.appendChild(error);
+  }
+
+  clearFieldError(input) {
+    input.classList.remove("border-red-500");
+    const error = input.parentElement.querySelector(".text-red-500");
+    if (error) {
+      error.remove();
+    }
+  }
+
+  // Animations
+  setupAnimations() {
+    // Intersection Observer for fade-in animations
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("animate-fade-in");
+        }
+      });
+    });
+
+    document.querySelectorAll(".animate-on-scroll").forEach((el) => {
+      observer.observe(el);
+    });
+  }
+
+  // Notifications
+  setupNotifications() {
+    // Create notification container if it doesn't exist
+    if (!document.getElementById("notification-container")) {
+      const container = document.createElement("div");
+      container.id = "notification-container";
+      container.className = "fixed top-4 right-4 z-50 space-y-2";
+      document.body.appendChild(container);
+    }
+  }
+
+  // Utility methods
+  showNotification(message, type = "info") {
+    const container = document.getElementById("notification-container");
+    if (!container) return;
+
+    const notification = document.createElement("div");
+    notification.className = `px-4 py-3 rounded-lg shadow-lg text-white transform transition-all duration-300 translate-x-full ${
+      type === "success"
+        ? "bg-green-500"
+        : type === "error"
+        ? "bg-red-500"
+        : type === "warning"
+        ? "bg-yellow-500"
+        : "bg-blue-500"
+    }`;
+    notification.textContent = message;
+
+    container.appendChild(notification);
+
+    // Animate in
+    setTimeout(() => {
+      notification.classList.remove("translate-x-full");
+    }, 10);
+
+    // Auto remove
+    setTimeout(() => {
+      notification.classList.add("translate-x-full");
+      setTimeout(() => notification.remove(), 300);
+    }, 3000);
+  }
+
+  showLoading(element) {
+    element.classList.add("opacity-50", "pointer-events-none");
+    const spinner = document.createElement("div");
+    spinner.className =
+      "absolute inset-0 flex items-center justify-center bg-white/50 dark:bg-gray-900/50";
+    spinner.innerHTML =
+      '<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>';
+    element.style.position = "relative";
+    element.appendChild(spinner);
+  }
+
+  hideLoading(element) {
+    element.classList.remove("opacity-50", "pointer-events-none");
+    const spinner = element.querySelector(".animate-spin");
+    if (spinner) {
+      spinner.remove();
+    }
+  }
+
+  // AJAX helper
+  async request(url, options = {}) {
+    const defaultOptions = {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Requested-With": "XMLHttpRequest",
+      },
+    };
+
+    const response = await fetch(url, { ...defaultOptions, ...options });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    return response.json();
+  }
+}

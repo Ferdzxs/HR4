@@ -4,15 +4,8 @@ include_once __DIR__ . '/../../shared/header.php';
 include_once __DIR__ . '/../../shared/sidebar.php';
 include_once __DIR__ . '/../../routing/rbac.php';
 
-
-
 $activeId = 'structures';
-
-
-
 $sidebarItems = $SIDEBAR_ITEMS[$user['role']] ?? [];
-
-
 ?>
 
 <!DOCTYPE html>
@@ -34,20 +27,23 @@ $sidebarItems = $SIDEBAR_ITEMS[$user['role']] ?? [];
                 class="flex-1 grid <?php echo $sidebarCollapsed ? 'lg:grid-cols-[72px_1fr]' : 'lg:grid-cols-[260px_1fr]'; ?>">
                 <?php echo renderSidebar($sidebarItems, $activeId, $sidebarCollapsed); ?>
                 <main class="overflow-y-auto">
-
                     <section class="p-4 lg:p-6 space-y-4">
                         <div>
                             <h1 class="text-lg font-semibold">Salary Structures</h1>
-                            <p class="text-xs text-slate-500 mt-1">Salary bands, position mapping, history</p>
+                            <p class="text-xs text-slate-500 mt-1">Define and update salary bands, map them to
+                                positions, track historical changes</p>
                         </div>
+
                         <div class="rounded-lg border border-[hsl(var(--border))] overflow-hidden">
                             <div class="p-3 border-b border-[hsl(var(--border))] bg-[hsl(var(--secondary))]">
                                 <div class="flex flex-col sm:flex-row gap-2 sm:items-center justify-between">
                                     <div class="flex gap-2">
+                                        <button
+                                            class="border border-[hsl(var(--border))] bg-transparent hover:bg-[hsl(var(--accent))] inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors h-9 px-3">Import</button>
                                     </div>
                                     <div>
                                         <button
-                                            class="bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] shadow hover:opacity-95 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-9 px-3">Add
+                                            class="bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] shadow hover:opacity-95 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium h-9 px-3">Add
                                             Grade</button>
                                     </div>
                                 </div>
@@ -71,11 +67,6 @@ $sidebarItems = $SIDEBAR_ITEMS[$user['role']] ?? [];
                                                     <div class="text-sm font-medium">No structures</div>
                                                     <div class="text-xs text-slate-500 mt-1">Create a salary grade to
                                                         begin.</div>
-                                                    <div class="mt-3">
-                                                        <button
-                                                            class="bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] shadow hover:opacity-95 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-9 px-3">Add
-                                                            Grade</button>
-                                                    </div>
                                                 </div>
                                             </td>
                                         </tr>
@@ -83,8 +74,12 @@ $sidebarItems = $SIDEBAR_ITEMS[$user['role']] ?? [];
                                 </table>
                             </div>
                         </div>
-                    </section>
 
+                        <div class="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
+                            <div class="p-3 border-b border-[hsl(var(--border))] font-semibold">Change History</div>
+                            <div class="p-4 text-sm text-slate-600 dark:text-slate-300">No changes yet.</div>
+                        </div>
+                    </section>
                 </main>
             </div>
         </div>

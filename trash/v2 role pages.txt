@@ -1,0 +1,88 @@
+Implement:
+1. make a file template for each pages for benefits coordinator @BENEFITS_COORDINATOR/   for this details:
+Dashboard (Benefits Overview): Quick view of active plans, enrollment status, and claim volumes.
+HMO & Benefits Management: Create, update, and manage all benefit plans (HMO, insurance, wellness, retirement).
+Claims Processing: Validate, approve, and track claims submitted by employees.
+Provider Directory: Maintain provider records (hospitals, doctors, insurers), contracts, and performance notes.
+Enrollment Center: Handle open enrollment, mid-year changes, and HR approvals.
+Benefits Analytics: Real-time reports on benefit utilization, participation, and cost impact.
+Employee Benefits Support: Track and resolve employee inquiries, tickets, and benefit-related issues.
+
+make sure that reuse this file for each pages:
+@header.php @styles.css @sidebar.php @scripts.js 
+
+2. make a file template for each pages for department head @DEPT_HEAD/   for this details:
+Dashboard (Team Overview): Snapshot of team headcount, leave status, performance tasks.
+Team Records: Directory of team members with role, job, and employment details.
+Leave Approvals: Approve/reject employee leave requests, track balances.
+Performance Review: Conduct evaluations, provide feedback, participate in calibration sessions.
+Staffing Cost Overview: View aggregated salary totals of team members (no access to org-wide budgets).
+Department Reports: Generate reports (team headcount, leave history, performance outcomes).
+Department Documents: Access HR-issued documents relevant to the department (policies, notices).
+
+make sure that reuse this file for each pages:
+@header.php @styles.css @sidebar.php @scripts.js 
+
+3. make a file template for each pages for Payroll Administrator @PAYROLL_ADMIN/   for this details:
+Dashboard (Payroll Status Overview): Current payroll run status, pending actions, exceptions flagged.
+Payroll Processing: Manage payroll runs with calendars, approvals, exception handling, and audit logs.
+Deductions & Contributions: Configure/manage deductions (loans, voluntary contributions, benefits).
+Tax & Compliance: Handle government withholding, reporting, and compliance filings.
+Disbursements: Generate salary disbursement files for banks, reconcile payments.
+Payslip Generation: Create and distribute payslips (individual or bulk).
+Payroll Reports: Generate compliance-focused reports (payroll registers, reconciliations, statutory reports).
+
+make sure that reuse this file for each pages:
+@header.php @styles.css @sidebar.php @scripts.js 
+
+4. make a file template for each pages for Hospital Employee @EMPLOYEE/  for this details:
+Home Page (Quick Links): Entry page with shortcuts to profile, payslips, leave requests, benefits, documents.
+My Profile: Personal and employment details with option to update certain fields (contact info, emergency contacts).
+Payslips: View, download, or print salary payslips with breakdown.
+Leave Requests: Submit leave requests, check balances, track approvals.
+Benefits Center: View active benefit enrollments, contributions, and claim history.
+My Documents: Access personal documents (contracts, forms, assigned HR policies).
+Help Center: FAQs, tutorials, HR contact information, support ticket submission.
+
+make sure that reuse this file for each pages:
+@header.php @styles.css @sidebar.php @scripts.js 
+
+5. make a file template for each pages for Hospital Management @EXECUTIVE/  for this details:
+Executive Dashboard: High-level HR KPIs (workforce cost, headcount, attrition, compliance flags).
+Workforce Analytics: Trends in headcount, demographics, attrition, and workforce risks.
+Compensation Insights: Salary distribution, total compensation cost, equity snapshots.
+Benefits Overview: Org-wide view of benefit enrollments, participation, and cost trends.
+Compliance Summary: High-level compliance metrics and risk alerts (no audit-level detail).
+Executive Reports: Download/generate strategic HR reports for decision-making.
+
+make sure that reuse this file for each pages:
+@header.php @styles.css @sidebar.php @scripts.js 
+
+6. make a file template for each pages for HR Manager @HR_MANAGER/  for this details:
+Dashboard (HR Overview): Summary of workforce, payroll cycles, benefits, and pending tasks.
+Employee Records: Full employee directory with personal info, employment details, onboarding/offboarding workflows.
+Leave Administration: Manage leave policies, monitor balances, approve escalated requests, and generate leave reports.
+Payroll Overview: View payroll calendar, check runs in progress, approve exceptions, ensure timely disbursement.
+Compensation Management: Maintain salary grades, track adjustments, review compensation plans, and approve increases.
+Benefits Administration: Oversee benefit plans, handle provider setup, manage employee enrollments and claims.
+HR Analytics Dashboard: Real-time workforce metrics (attrition, headcount, payroll cost, leave trends).
+HR Documents: Central library for HR policies, templates, contracts, with version control and access tracking.
+Delegations: Assign temporary roles, set approval chains, monitor delegated actions.
+Settings: Configure system roles, permissions, and HR-related configurations.
+
+make sure that reuse this file for each pages:
+@header.php @styles.css @sidebar.php @scripts.js 
+
+7. make a file template for each pages for Compensation Manager @COMPENSATION_MANAGER/  for this details:
+Dashboard (Compensation Cycle Overview): Snapshot of active compensation cycles, pending approvals, and budget utilization.
+Salary Structures: Define and update salary bands, map them to positions, track historical changes.
+Merit Increases: Manage performance-based salary increase cycles, review manager submissions, approve adjustments.
+Compensation Budgeting: Allocate budgets to departments, track utilization and variances.
+Pay Equity Reports: Generate equity analysis reports by gender, role, department to ensure fairness.
+Internal Pay Benchmarking: Compare salaries across departments/roles internally for alignment (excludes market data).
+Compensation Analytics: Visual and tabular insights into compensation distribution, cost trends, and utilization.
+
+make sure that reuse this file for each pages:
+@header.php @styles.css @sidebar.php @scripts.js 
+
+After finishing implementing all 1-6 kindly fix the pathing in app.php and the rbac rbac.php

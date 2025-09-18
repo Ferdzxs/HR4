@@ -825,7 +825,8 @@ $recentActivities = $dbHelper->getRecentActivities(10);
                             <option value="<?php echo $grade['id']; ?>">
                                 <?php echo htmlspecialchars($grade['grade_level']); ?>
                                 (₱<?php echo number_format($grade['min_salary'], 0); ?> -
-                                ₱<?php echo number_format($grade['max_salary'], 0); ?>)</option>
+                                ₱<?php echo number_format($grade['max_salary'], 0); ?>)
+                            </option>
                         <?php endforeach; ?>
                     </select>
                 </div>
@@ -838,7 +839,8 @@ $recentActivities = $dbHelper->getRecentActivities(10);
                         <option value="">Select Position (Optional)</option>
                         <?php foreach ($positions as $pos): ?>
                             <option value="<?php echo $pos['id']; ?>">
-                                <?php echo htmlspecialchars($pos['position_title']); ?></option>
+                                <?php echo htmlspecialchars($pos['position_title']); ?>
+                            </option>
                         <?php endforeach; ?>
                     </select>
                 </div>
@@ -901,7 +903,8 @@ $recentActivities = $dbHelper->getRecentActivities(10);
                             <option value="<?php echo $grade['id']; ?>">
                                 <?php echo htmlspecialchars($grade['grade_level']); ?>
                                 (₱<?php echo number_format($grade['min_salary'], 0); ?> -
-                                ₱<?php echo number_format($grade['max_salary'], 0); ?>)</option>
+                                ₱<?php echo number_format($grade['max_salary'], 0); ?>)
+                            </option>
                         <?php endforeach; ?>
                     </select>
                 </div>
@@ -914,7 +917,8 @@ $recentActivities = $dbHelper->getRecentActivities(10);
                         <option value="">Select Position (Optional)</option>
                         <?php foreach ($positions as $pos): ?>
                             <option value="<?php echo $pos['id']; ?>">
-                                <?php echo htmlspecialchars($pos['position_title']); ?></option>
+                                <?php echo htmlspecialchars($pos['position_title']); ?>
+                            </option>
                         <?php endforeach; ?>
                     </select>
                 </div>

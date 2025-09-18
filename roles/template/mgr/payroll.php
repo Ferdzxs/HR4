@@ -629,7 +629,7 @@ $recentPeriods = array_slice($payrollPeriods, 0, 5);
                                             <tr
                                                 class="border-t border-[hsl(var(--border))] hover:bg-[hsl(var(--accent))] transition-colors">
                                                 <td class="px-3 py-3 font-medium text-slate-900 dark:text-slate-100">
-                                                    <?php echo htmlspecialchars($period['period_name'] ?? (date('M j', strtotime($period['period_start'])) . ' - ' . date('M j, Y', strtotime($period['period_end'])))); ?>
+                                                    <?php echo htmlspecialchars($period['period_name']); ?>
                                                 </td>
                                                 <td class="px-3 py-3 text-slate-600 dark:text-slate-300">
                                                     <?php echo date('M j, Y', strtotime($period['period_start'])); ?>
@@ -639,17 +639,17 @@ $recentPeriods = array_slice($payrollPeriods, 0, 5);
                                                 </td>
                                                 <td class="px-3 py-3">
                                                     <span class="px-2 py-1 rounded-full text-xs font-medium <?php
-                                                    echo (($period['status'] ?? 'Open') === 'Open') ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' :
-                                                        ((($period['status'] ?? 'Open') === 'Processed') ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400' :
+                                                    echo $period['status'] === 'Open' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' :
+                                                        ($period['status'] === 'Processed' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400' :
                                                             'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400');
                                                     ?>">
-                                                        <?php echo htmlspecialchars($period['status'] ?? 'Open'); ?>
+                                                        <?php echo htmlspecialchars($period['status']); ?>
                                                     </span>
                                                 </td>
                                                 <td class="px-3 py-3">
                                                     <div class="flex items-center gap-1">
                                                         <button
-                                                            onclick="openEditPeriodModal(<?php echo $period['id']; ?>, '<?php echo htmlspecialchars($period['period_name'] ?? (date('M j', strtotime($period['period_start'])) . ' - ' . date('M j, Y', strtotime($period['period_end'])))); ?>', '<?php echo $period['period_start']; ?>', '<?php echo $period['period_end']; ?>', '<?php echo $period['status'] ?? 'Open'; ?>')"
+                                                            onclick="openEditPeriodModal(<?php echo $period['id']; ?>, '<?php echo htmlspecialchars($period['period_name']); ?>', '<?php echo $period['period_start']; ?>', '<?php echo $period['period_end']; ?>', '<?php echo $period['status']; ?>')"
                                                             class="p-1 text-slate-400 hover:text-green-600 transition-colors"
                                                             title="Edit">
                                                             <svg class="w-4 h-4" fill="none" stroke="currentColor"
@@ -661,7 +661,7 @@ $recentPeriods = array_slice($payrollPeriods, 0, 5);
                                                             </svg>
                                                         </button>
                                                         <button
-                                                            onclick="openDeletePeriodModal(<?php echo $period['id']; ?>, '<?php echo htmlspecialchars($period['period_name'] ?? (date('M j', strtotime($period['period_start'])) . ' - ' . date('M j, Y', strtotime($period['period_end'])))); ?>')"
+                                                            onclick="openDeletePeriodModal(<?php echo $period['id']; ?>, '<?php echo htmlspecialchars($period['period_name']); ?>')"
                                                             class="p-1 text-slate-400 hover:text-red-600 transition-colors"
                                                             title="Delete">
                                                             <svg class="w-4 h-4" fill="none" stroke="currentColor"

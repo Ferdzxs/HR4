@@ -721,7 +721,8 @@ $recentClaims = array_slice($benefitClaims, 0, 10);
                         <option value="">Select Provider</option>
                         <?php foreach ($providers as $provider): ?>
                             <option value="<?php echo $provider['id']; ?>">
-                                <?php echo htmlspecialchars($provider['provider_name']); ?></option>
+                                <?php echo htmlspecialchars($provider['provider_name']); ?>
+                            </option>
                         <?php endforeach; ?>
                     </select>
                 </div>
